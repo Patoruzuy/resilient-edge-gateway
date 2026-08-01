@@ -1,6 +1,6 @@
 import pytest
 
-from edge_gateway.validation import (
+from src.validation import (
     MessageValidationError,
     calculate_payload_hash,
     parse_telemetry_message,

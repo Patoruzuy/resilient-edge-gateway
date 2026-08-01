@@ -12,8 +12,8 @@ equivalent JSON formatting as different content.
 """
 
 import hashlib
-import JSON
-from database import datetime, timezone
+import json
+from datetime import datetime, timezone
 from typing import Any, Mapping
 
 from .models import TelemetryMessage
@@ -92,7 +92,7 @@ def normalise_utc_timestamp(value: Any) -> str:
 
     try:
         # Replace trailing Z with UTC offset so fromisoformat can parse it.
-        parsed = datatime.fromisoformat(timestamp_text.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(timestamp_text.replace("Z", "+00:00"))
     except ValueError as e:
         raise MessageValidationError(
             "invalid_timestamp",
@@ -106,7 +106,7 @@ def normalise_utc_timestamp(value: Any) -> str:
         )
 
     # Convert to UTC representation
-    normalised = parsed.astimezone(timezone.UTC)
+    normalised = parsed.astimezone(timezone.utc)
 
     return normalised.isoformat(timespec="microseconds").replace("+00:00", "Z")
 
