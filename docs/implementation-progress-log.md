@@ -32,7 +32,7 @@ Completed:
 - Implemented validation for required fields, identifiers, integers, timestamps and payload content.
 - Added Coordinated Universal Time normalisation for source timestamps.
 - Implemented payload serialisation using canonical JSON.
-- Implemented SHA-256 payload hashing to support duplicate classification.
+- Verified and updated SHA-256 payload hashing to support duplicate classification.
 - Added tests for valid messages, missing fields, timestamp normalisation and equivalent payload hashing.
 - Ran the message-contract test suite successfully after fixed the errors.
 - Committed the completed work to the `feat/baseline-message-contract` branch.
@@ -69,7 +69,7 @@ Branch:
 - `feat/sqlite-outbox`
 
 Completed:
-- Implemented SQLite database initialisation.
+- Verified SQLite database initialisation.
 - Configured SQLite Write-Ahead Logging mode.
 - Enabled foreign-key enforcement for each database connection.
 - Added execution of `schema.sql` when the database is initialised.
@@ -133,5 +133,53 @@ Next action:
 - Connect the local Mosquitto subscription callback to `parse_telemetry_message()` and `store_message()`.
 
 TMA03 objectives:
+- DO2
+- DO4
+
+
+## 03/08/2026
+
+Branch:
+- `feat/gateway-ingestion`
+
+Started:
+- Created the gateway-ingestion implementation slice.
+- Defined the settings required for the ingestion slice.
+
+Planned implementation:
+- Create the configuration models for the local-first edge gateway.
+- Define safe values for the local testing
+
+current status:
+- Implemented
+
+TMA03 objectives:
+
+
+## 04/08/2026
+
+Branch:
+- `feat/gateway-ingestion`
+
+Started:
+- Defined the slice boundary as local MQTT ingestion through to local
+  SQLite persistence.
+- Confirmed that upstream publication, retries, link-stability detection,
+  controlled recovery and NetEm testing remain outside this slice.
+
+Planned implementation:
+- Add local Mosquitto connection configuration.
+- Subscribe to the agreed telemetry topic filter at QoS 1.
+- Connect the MQTT message callback to `parse_telemetry_message()`.
+- Pass validated telemetry to `store_message()`.
+- Record inserted, duplicate, conflict, rejected and error outcomes.
+- Add focused ingestion tests.
+- Complete a real Mosquitto smoke test.
+
+Current status:
+- In progress.
+
+TMA03 objectives:
+- DO1
 - DO2
 - DO4

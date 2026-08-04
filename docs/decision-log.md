@@ -131,3 +131,80 @@ specific implementation choices that were not fixed in the report.
 Explain how canonical JSON and SHA-256 were used to implement payload
 comparison, including the distinction between retransmissions and
 conflicting message content.
+
+
+## D004: Ingestion configuration module
+
+Date: 03/08/2026
+Status: Accepted
+
+### TMA03 position
+
+TMA03 does not require a dedicated configuration module for the ingestion slice.
+Settings such as broker host, port, topic filter, QoS and database paths are not explicitly defined as part of the slice.
+
+### Decision
+Introduce an `IngestionConfig` dataclass to hold all settings required by the ingestion slice, including:
+
+MQTT broker host, port, topic filter, QoS and client identifier
+
+keepalive interval
+
+SQLite database path
+
+schema file path
+
+The ingestion service receives an `IngestionConfig` instance and uses it to initialise the MQTT client and open the database.
+
+### Reason
+Centralising configuration makes the gateway easier to calibrate during development and testing.
+It also prepares the system for later slices where upstream publication, controlled recovery and operational tuning will require additional settings.
+
+Using a dataclass provides immutability, type safety and a clear structure for future configuration fields.
+
+### Relationship to TMA03
+This decision extends the implementation beyond the minimum required by TMA03 but does not change the behaviour of the ingestion slice.
+It provides an implementation detail that supports maintainability and future extensibility without altering the core design.
+
+### Final‑report action
+Describe the configuration module and explain how centralising ingestion settings supports calibration and prepares the gateway for later slices.
+
+
+## D005: Local MQTT ingestion boundary
+
+Date: 04/08/2026
+Status: Accepted
+
+### TMA03 position
+
+The gateway receives technical telemetry through a local Mosquitto
+broker, validates each message and commits accepted records to the
+SQLite WAL outbox before upstream publication.
+
+### Decision
+
+Use Eclipse Paho to subscribe to `telemetry/#` at QoS 1.
+
+The MQTT callback delegates processing to:
+
+1. `parse_telemetry_message()`
+2. `store_message()`
+
+The callback contains no validation rules or SQL logic of its own.
+
+### Reason
+
+Keeping the callback small separates MQTT transport concerns from
+message validation and durable persistence. The existing unit-tested
+functions remain authoritative for those behaviours.
+
+### Relationship to TMA03
+
+This implements the local ingestion path described in TMA03. The topic
+filter, client identifier and Eclipse Paho callback configuration are
+implementation details.
+
+### Final-report action
+
+Describe how the local MQTT callback connects the broker to the
+validation and SQLite persistence pipeline.
