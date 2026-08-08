@@ -1,29 +1,5 @@
 # Test scenario register
 
-## OUTBOX-01: Valid message persistence
-
-Purpose:
-Verify that a valid MQTT message is committed once to SQLite.
-
-Configuration:
-- QoS 1
-- No NetEm impairment
-- One publisher
-- One message
-
-Expected:
-- One `pending` outbox row
-- No rejection record
-- No duplicate observation
-
-Actual:
-To be completed.
-
-Evidence:
-- Test log
-- SQLite query output
-- Git commit
-
 ## DB-01: Database initialisation
 
 Purpose:

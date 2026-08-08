@@ -183,3 +183,68 @@ TMA03 objectives:
 - DO1
 - DO2
 - DO4
+
+
+## 07/08/2026
+
+Branch:
+- `feat/gateway-ingestion`
+
+Commit:
+- `feat(ingestion): persist local MQTT telemetry`
+
+Completed:
+- Implemented configuration for the local Mosquitto connection.
+- Implemented the local MQTT subscription using the agreed topic filter
+  and QoS 1.
+- Connected the MQTT callback to `parse_telemetry_message()` and
+  `store_message()`.
+- Kept validation and SQL logic outside the callback.
+- Added structured outcomes for inserted, duplicate, conflict, rejected
+  and database-error cases.
+- Added ingestion tests.
+- Completed a real Mosquitto smoke test.
+- Verified that a valid MQTT publication creates one durable `pending`
+  outbox row.
+- Verified that an identical retransmission does not create another row.
+- Verified that malformed JSON does not enter the outbox.
+
+Problems:
+- message_id and row_id were defined as required fields in the dataclass. However, process_mqtt_publication does not supply those fields.
+- valid_paylod() test failed because returned bytes that were not valid JSON.
+
+Corrective actions:
+- Default values (None) were added to message_id and row_id, allowing the dataclass to represent both success and error outcomes consistently.
+- valid_payload() returns json.dumps({"temperature_c": 18.5}).encode("utf-8") instead
+of b"temperature_c=18.5".
+
+Evidence:
+- Passing ingestion tests.
+- Passing full test suite.
+- Gateway log from the Mosquitto smoke test.
+- SQLite query showing the persisted `pending` row.
+- Git branch and commit.
+- Design decision D005.
+
+Outcome:
+- The complete local ingestion path is operational:
+
+  `publisher → local broker → gateway callback → validation → SQLite WAL`
+
+- This demonstrates durable local ingestion but does not yet demonstrate
+  upstream publication or controlled recovery.
+
+Limitations:
+- Upstream delivery has not yet been implemented.
+- Broker acknowledgements have not yet been linked to outbox state.
+- NetEm has not yet been applied to the complete MQTT path.
+
+Next action:
+- Begin `feat/upstream-publication`.
+- Publish eligible `pending` rows to the upstream broker and implement
+  the initial acknowledgement-state transition.
+
+TMA03 objectives:
+- DO1
+- DO2
+- DO4
