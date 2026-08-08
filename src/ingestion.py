@@ -44,8 +44,8 @@ class IngestionResult:
 
     outcome: IngestionOutcome
     topic: str
-    message_id: str
-    row_id: int
+    message_id: str | None = None
+    row_id: int | None = None
     reason_code: str | None = None
     detail: str | None = None
 
