@@ -248,3 +248,20 @@ TMA03 objectives:
 - DO1
 - DO2
 - DO4
+
+
+## 08/08/2026
+
+Branch:
+- `feat/upstream-publication`
+
+Started:
+- Created the upstream-publication implementation slice.
+- Defined the settings required for the upstream slice.
+
+Planned implementation:
+- Create the configuration models for the local-first edge gateway.
+- Define safe values for the local testing
+
+current status:
+- Implemented
