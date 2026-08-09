@@ -208,3 +208,96 @@ implementation details.
 
 Describe how the local MQTT callback connects the broker to the
 validation and SQLite persistence pipeline.
+
+
+## D006: Upstream publication and acknowledgement handling
+
+Date: 09/08/2026
+Status: Accepted
+
+### TMA03 position
+
+TMA03 defines SQLite as the main record of delivery state.
+A selected message becomes `in_flight` immediately before upstream
+publication. A confirmed MQTT acknowledgement changes the record to
+`broker_acknowledged`, while publication failure or acknowledgement
+timeout changes it to `retry_wait`.
+
+TMA03 also distinguishe broker acknowledgement from end-to-end delivery
+evidence. A broker acknowledgement confirms the MQTT interaction with the
+upstream broker but does not prove that the evaluation collector observed
+the message.
+
+### Decision
+
+The upstream worker selects and publishes one pending record at
+a time using MQTT QoS 1.
+
+The worker:
+
+1. Select the oldest eligible `pending` outbox record.
+2. Change the durable state to `in_flight`.
+3. Increment `attempt_count` and record `last_attempt_at`.
+4. Publish the stored MQTT topic and payload to the upstream broker.
+5. Wait for the QoS 1 publication result.
+6. Change the row to `broker_acknowledged` when acknowledgement is
+   confirmed.
+7. Change the row to `retry_wait` when publication fails, times out or
+   remains uncertain.
+
+If no `pending` record exists, the operation returns without publishing.
+
+### Reason
+
+The one-message provides a simple, observable implementation of
+the durable acknowledgement state model before backlog replay is
+introduced.
+
+It also keeps the publication separate from controlled recovery.
+Automatically draining every pending record at this stage would introduce
+an uncontrolled store-and-forward mechanism and would conflict with the
+TMA03 design, which requires link-stability detection and bounded replay.
+
+### Ordering
+
+Uses:
+
+`source_timestamp ASC, id ASC`
+
+This provides deterministic selection of older pending records. The later
+controlled-recovery scheduler will introduce the full device-ordering,
+bounded batching and priority behaviour defined in TMA03.
+
+### Acknowledgement uncertainty
+
+A timeout or uncertain publication result is not treated as proof of
+failure at the broker. The row moves to `retry_wait` because the gateway
+cannot know with certainty whether the broker accepted the publication.
+
+This preserves the at-least-once recovery condition described in TMA03
+and allows resulting duplicates to be measured later.
+
+### Relationship to TMA03
+
+This decision implements the state transitions already specified
+in TMA03 and does not alter the submitted architecture.
+
+The one-record execution model, timeout value and deterministic selection
+query are implementation details.
+
+### Limitations
+
+This decision does not implement:
+
+- automatic retry scheduling;
+- stale `in_flight` recovery;
+- link-stability detection;
+- bounded backlog replay;
+- priority scheduling;
+- collector reconciliation.
+
+### Final-report action
+
+Explain the durable state transition sequence and make clear that
+`broker_acknowledged` represents broker-level evidence rather than
+collector-confirmed delivery.

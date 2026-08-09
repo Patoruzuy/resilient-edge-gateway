@@ -265,3 +265,223 @@ Planned implementation:
 
 current status:
 - Implemented
+
+
+
+## 09/08/2026
+
+Branch:
+- `feat/upstream-publication`
+
+Implementation slice:
+- Upstream MQTT publication
+
+Completed:
+- Implemented a separate upstream MQTT client for forwarding telemetry
+  already committed to the SQLite WAL outbox.
+- Implemented selection of the next eligible `pending` outbox record.
+- Kept the baseline publisher deliberately limited to one message per
+  publication operation so that uncontrolled backlog replay is not
+  introduced before the controlled-recovery slice.
+- Implemented the durable transition from `pending` to `in_flight`
+  immediately before upstream publication.
+- Incremented `attempt_count` and recorded `last_attempt_at` when a
+  publication attempt starts.
+- Implemented MQTT Quality of Service 1 upstream publication.
+- Implemented waiting for the broker acknowledgement before treating a
+  publication as successful.
+- Implemented the transition from `in_flight` to
+  `broker_acknowledged` when the QoS 1 acknowledgement is confirmed.
+- Implemented the transition from `in_flight` to `retry_wait` when
+  publication cannot be started, fails or the acknowledgement is not
+  confirmed within the configured timeout.
+- Added a `NO_PENDING` outcome so that an empty outbox is handled without
+  an error or unnecessary MQTT publication.
+- Added structured publication results containing the outbox row,
+  message identifier, MQTT message identifier and publication outcome.
+- Added automated tests covering successful acknowledgement, immediate
+  MQTT publication failure, acknowledgement timeout and an empty outbox.
+- Completed a real upstream Mosquitto smoke test and confirmed successful
+  QoS 1 publication, broker acknowledgement, subscriber receipt and
+  durable SQLite state transition.
+
+Problems identified:
+- The first complete upstream test run produced four failures in
+  `tests/test_upstream.py`.
+- All four failures initially originated from the same SQL statement in
+  `get_next_pending_message()` rather than from separate upstream
+  publication problems.
+- The `SELECT` statement contained a trailing comma after
+  `attempt_count`, causing SQLite to raise:
+
+  `sqlite3.OperationalError: near "FROM": syntax error`
+
+- Because the query failed before returning an outbox row, none of the
+  four upstream tests reached the MQTT publication logic during that
+  run.
+- After correcting the SQL syntax, the tests progressed into the
+  repository state-transition logic.
+- Three tests then failed because `mark_in_flight()` assigned the current
+  timestamp to a variable named `row` but attempted to use an undefined
+  variable named `now`.
+- The empty-outbox test failed because `get_next_pending_message()` did
+  not handle `fetchone()` returning `None`.
+- During the real smoke-test preparation, the standalone
+  `tools/publish_pending.py` script initially failed to locate the
+  `edge_gateway` package because of the project's Python import path.
+- A later configuration error was also identified because
+  `broker_port` was represented as a string rather than an integer,
+  causing configuration validation to raise a `TypeError`.
+
+Corrective actions:
+- Removed the trailing comma after `attempt_count` in
+  `get_next_pending_message()`.
+- Changed the SQL delivery-state comparison to use the string literal
+  `'pending'`.
+- Added an explicit `if row is None: return None` guard to
+  `get_next_pending_message()`.
+- Retained deterministic pending-message selection using
+  `source_timestamp ASC, id ASC`.
+- Changed `row = utc_now()` to `now = utc_now()` in
+  `mark_in_flight()`.
+- Reviewed the remaining state-transition functions for consistent
+  timestamp handling.
+- Corrected the standalone execution environment so that
+  `publish_pending.py` could import the project modules.
+- Corrected `broker_port` so that it is stored as an integer rather than
+  a string.
+- Re-ran the affected tests after each correction before proceeding to
+  the real broker smoke test.
+
+Initial test evidence:
+- The full test suite initially collected 15 tests.
+- 11 existing database, ingestion, repository and validation tests
+  passed.
+- Four new upstream-publication tests initially failed because of the
+  shared SQL syntax error.
+- The existing implementation therefore remained stable while defects in
+  the new upstream-publication slice were isolated and corrected.
+
+Initially failing tests:
+
+- `test_successful_publish_becomes_broker_acknowledged`
+- `test_publish_error_moves_message_to_retry_wait`
+- `test_acknowledgement_timeout_moves_message_to_retry_wait`
+- `test_no_pending_message_returns_without_publishing`
+
+Final verification:
+- Re-ran the upstream automated tests after correcting the repository
+  implementation.
+- The focused upstream-publication tests passed.
+- Completed a real Mosquitto smoke test using an upstream broker on port
+  1884.
+- The `edge-gateway-upstream` client connected successfully and published
+  `msg-smoke-002` to `telemetry/sensor-001` using MQTT QoS 1.
+- The Mosquitto broker log confirmed receipt of the QoS 1 `PUBLISH` and
+  transmission of the corresponding `PUBACK`.
+- An independent `mosquitto_sub` client subscribed to `telemetry/#`
+  received the expected payload:
+
+  `{"temperature_c":18.5}`
+
+- The gateway reported:
+
+  `outcome=broker_acknowledged row_id=2 message_id=msg-smoke-002 mid=1`
+
+- SQLite inspection confirmed that the message remained durably recorded
+  with:
+
+  - `delivery_state = broker_acknowledged`
+  - `attempt_count = 1`
+  - populated `last_attempt_at`
+  - populated `acknowledged_at`
+
+Smoke-test evidence:
+
+- Upstream broker: `localhost:1884`
+- Gateway MQTT client: `edge-gateway-upstream`
+- Topic: `telemetry/sensor-001`
+- QoS: 1
+- Message: `msg-smoke-002`
+- MQTT message identifier: 1
+- Subscriber receipt: confirmed
+- Broker `PUBACK`: confirmed
+- Durable SQLite acknowledgement state: confirmed
+
+Evidence:
+- `src/upstream.py`
+- Updated `src/repository.py`
+- Upstream configuration in `src/config.py`
+- `tools/publish_pending.py`
+- `tests/test_upstream.py`
+- Initial pytest output showing 11 passed and 4 failed.
+- Subsequent passing focused upstream tests.
+- Mosquitto broker log.
+- Independent subscriber output.
+- Gateway publication log.
+- SQLite state inspection.
+- Corrected `get_next_pending_message()` query.
+- Design decision D006.
+
+Outcome:
+- The implementation now connects durable local persistence to the
+  upstream MQTT publication path.
+- A selected message is placed in `in_flight` before publication so that
+  the database records that a transmission attempt has begun.
+- Confirmed QoS 1 acknowledgement changes the durable state to
+  `broker_acknowledged`.
+- Failed or uncertain publication changes the durable state to
+  `retry_wait`.
+- The implementation preserves the acknowledgement uncertainty described
+  in TMA03 rather than assuming that an attempted publication was
+  delivered successfully.
+- The real smoke test demonstrated successful broker acknowledgement and
+  independent subscriber receipt under normal local network conditions.
+- Broker acknowledgement remains distinct from formal end-to-end
+  collector evidence.
+
+Limitations:
+- `broker_acknowledged` proves interaction with the upstream broker only.
+  It does not yet prove that the evaluation collector received the
+  telemetry.
+- `retry_wait` records are not yet automatically rescheduled.
+- Stale `in_flight` recovery is not implemented in this slice.
+- Link-stability detection is not implemented.
+- Bounded backlog replay is not implemented.
+- Priority-aware recovery scheduling is not implemented.
+- NetEm impairment has not yet been applied to this complete publication
+  path.
+
+Relationship to TMA03:
+- Implements the durable transitions defined in the TMA03
+  outbox state model:
+  `pending → in_flight → broker_acknowledged`
+- Implements failure handling:
+  `in_flight → retry_wait`
+- Establishes the acknowledgement-handling foundation required before
+  stale `in_flight` recovery and controlled recovery are implemented.
+- Does not claim that controlled recovery, DO3, has been completed.
+
+Next action should be:
+- run the complete automated test suite once more before closing the
+  branch, if this has not already been done after the final corrections.
+- Keep the broker, publisher, subscriber and SQLite smoke-test
+  outputs as implementation evidence.
+- Commit the verified `feat/upstream-publication` slice.
+- Merge the completed slice into the project baseline and confirm that
+  the complete test suite remains green.
+- Start `feat/evaluation-collector` to replace the diagnostic subscriber
+  with persistent, independent downstream output evidence.
+- Use the publisher and collector evidence later to calculate delivery
+  completeness under EO1.
+
+  TMA03 objectives:
+
+- DO2: extends durable local persistence into durable upstream
+  delivery-state tracking.
+- DO3: provides a prerequisite for controlled recovery; link-stability
+  detection and bounded replay remain outstanding.
+- EO1: establishes the upstream publication path required for later
+  collector-based delivery-completeness measurement.
+- EO2: establishes acknowledgement and retransmission behaviour required
+  for later duplicate-control evaluation.

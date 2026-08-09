@@ -2,8 +2,7 @@
 Local MQTT ingestion for the edge gateway.
 
 The module subscribes to the local Mosquitto broker, validates received
-telemetry and stores accepted messages to the SQLite WAL outbox. The slice
-ends at durable local persistence. Upstrea publication is not part of this slice.
+telemetry and stores accepted messages to the SQLite WAL outbox.
 
 Validation failures and database errors are logged and returned as ingestion
 outcomes rather than terminating the network loop.

@@ -62,7 +62,7 @@ class UpstreamConfig:
     This configuration supports one record at a time publication.
     """
     broker_host: str = "localhost"
-    broker_port: str = "1884" # Standard MQTT port
+    broker_port: str = 1884 # Standard MQTT port
     client_id: str = "edge-gateway-upstream"
     qos: int = 1 # QoS 1 for the local subscription and at-least-once delivery
     keepalive_seconds: int = 60 # Broker ping interval

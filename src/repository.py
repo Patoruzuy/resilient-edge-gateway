@@ -227,13 +227,16 @@ def get_next_pending_message(
             topic,
             payload,
             source_timestamp,
-            attempt_count,
+            attempt_count
         FROM outbox_messages
         WHERE delivery_state = "pending"
         ORDER BY source_timestamp ASC, id ASC
         LIMIT 1
         """
     ).fetchone()
+
+    if row is None:
+        return None
 
     return PendingOutboxMessage(
         row_id=int(row["id"]),
@@ -245,7 +248,7 @@ def get_next_pending_message(
     )
 
 
-def _require_single_transaction(
+def _require_single_transition(
     cursor: sqlite3.Cursor,
     row_id: int,
     expected_state: str,
@@ -270,7 +273,7 @@ def mark_in_flight(
     If the process stoips afterwards, the durable in_flight row provides
     evidence of the interrupted attempt.
     """
-    row = utc_now()
+    now = utc_now()
 
     with connection:
         cursor = connection.execute(
