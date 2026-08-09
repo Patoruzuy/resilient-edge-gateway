@@ -21,7 +21,7 @@ SCHEMA_PATH = (
 def create_pending_message(connection):
     message = parse_telemetry_message(
         {
-            "message_id": "msg-upstream-001",
+            "message_id": "msg-000001",
             "device_id": "sensor-001",
             "publisher_session_id": "session-001",
             "source_sequence": 1,

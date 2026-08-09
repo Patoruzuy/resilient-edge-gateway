@@ -239,3 +239,47 @@ def test_no_pending_message_returns_without_publishing(tmp_path):
 
     finally:
         connection.close()
+
+
+def test_upstream_publication_preserves_message_identity(
+    tmp_path,
+):
+    connection = open_database(
+        tmp_path / "gateway.db",
+        SCHEMA_PATH,
+    )
+
+    try:
+        create_pending_message(connection)
+
+        client = FakeMqttClient(
+            FakeMessageInfo(
+                rc=mqtt.MQTT_ERR_SUCCESS,
+                mid=30,
+                published=True,
+            )
+        )
+
+        publish_one_pending(
+            connection,
+            client,
+        )
+
+        forwarded_payload = (
+            client.publications[0]["payload"]
+        )
+
+        message = parse_telemetry_message(
+            forwarded_payload
+        )
+
+        assert message.message_id == "msg-000001"
+        assert message.device_id == "sensor-001"
+        assert (
+            message.publisher_session_id
+            == "session-001"
+        )
+        assert message.source_sequence == 1
+
+    finally:
+        connection.close()

@@ -47,11 +47,14 @@ class PendingOutboxMessage:
     """Pending outbox message selected for upstream publication """
     row_id: int
     message_id: str
+    device_id: str
+    publisher_session_id: str
+    source_sequence: int
+    source_timestamp: str
+    priority: int
     topic: str
     payload: str
-    source_timestamp: str
     attempt_count: int
-
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(
@@ -224,9 +227,13 @@ def get_next_pending_message(
         SELECT
             id,
             message_id,
+            device_id,
+            publisher_session_id,
+            source_sequence,
+            source_timestamp,
+            priority,
             topic,
             payload,
-            source_timestamp,
             attempt_count
         FROM outbox_messages
         WHERE delivery_state = "pending"
@@ -241,9 +248,13 @@ def get_next_pending_message(
     return PendingOutboxMessage(
         row_id=int(row["id"]),
         message_id=str(row["message_id"]),
+        device_id=str(row["device_id"]),
+        publisher_session_id=str(row["publisher_session_id"]),
+        source_sequence=int(row["source_sequence"]),
+        source_timestamp=str(row["source_timestamp"]),
+        priority=int(row["priority"]),
         topic=str(row["topic"]),
         payload=str(row["payload"]),
-        source_timestamp=str(row["source_timestamp"]),
         attempt_count=int(row["attempt_count"]),
     )
 
