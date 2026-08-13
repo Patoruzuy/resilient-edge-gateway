@@ -1,6 +1,6 @@
 from pathlib import Path
-import json
 
+from tests.helpers import valid_payload
 from src.database import open_database
 from src.ingestion import (
     IngestionOutcome,
@@ -11,23 +11,6 @@ from src.ingestion import (
 SCHEMA_PATH = (
     Path(__file__).resolve().parent.parent / "schema.sql"
 )
-
-
-def valid_payload():
-    return json.dumps(
-    {
-        "message_id": "msg-000001",
-        "device_id": "sensor-001",
-        "publisher_session_id": "session-001",
-        "source_sequence": 1,
-        "source_timestamp": "2026-07-15T12:00:00+01:00",
-        "priority": 0,
-        "payload": {
-            "temperature_c": 18.5,
-            "humidity_percent": 71,
-        },
-    }).encode("utf-8")
-
 
 def test_valid_mqtt_publication_is_persisted(tmp_path):
     database_path = tmp_path / "gateway.db"

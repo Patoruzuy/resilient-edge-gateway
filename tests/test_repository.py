@@ -1,35 +1,13 @@
-import json
 from pathlib import Path
 
 from src.database import open_database, open_evaluation_database
 from src.repository import StoreOutcome, store_message, record_collector_observation
 from src.validation import parse_telemetry_message
+from tests.helpers import valid_message, valid_message_bytes
 
 
 SCHEMA_PATH = Path(__file__).resolve().parent.parent / "schema.sql"
 EVALUATION_SCHEMA_PATH = Path(__file__).resolve().parent.parent / "evaluation_schema.sql"
-
-
-def valid_message(payload: dict | None = None) -> dict:
-    """Retunrs a valid telemetry message as dict."""
-    return {
-        "message_id": "msg-000001",
-        "device_id": "sensor-001",
-        "publisher_session_id": "session-001",
-        "source_sequence": 1,
-        "source_timestamp": "2026-07-15T11:00:00Z",
-        "priority": 0,
-        "payload": payload or {"temperature_c": 18.5},
-    }
-
-def valid_message_bytes() -> bytes:
-    """Return the valid telemetry message as the MQTT-style UTF-8 bytes"""
-    return json.dumps(
-        valid_message(),
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=False,
-    ).encode("utf-8")
 
 def test_new_message_is_inserted_as_pending(tmp_path):
     database_path = tmp_path / "gateway.db"
