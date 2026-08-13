@@ -1,6 +1,6 @@
 """
 Store incoming telemetry messages in the outbox table with idempotency
-guarantees.
+guarantees and operations for evaluation collector evidence.
 
 This module inserts validated TelemetryMessage objects into SQLite and ensures
 each message is stored exactly once. It uses a composite idempotency key
@@ -24,7 +24,11 @@ from datetime import datetime, timezone
 from enum import Enum
 
 from .models import TelemetryMessage
-from .validation import calculate_payload_hash, normalised_payload_json
+from .validation import (
+    calculate_payload_hash,
+    normalised_payload_json,
+    calculate_payload_hash,
+    )
 
 
 class StoreOutcome(str, Enum):
@@ -56,11 +60,15 @@ class PendingOutboxMessage:
     payload: str
     attempt_count: int
 
+
 def utc_now() -> str:
+    """Return the current UTC timestamp in ISO 8601 format."""
     return datetime.now(timezone.utc).isoformat(
     timespec="microseconds"
     ).replace("+00:00", "Z")
 
+
+# Gateway outbox operations
 
 def store_message(
     connection: sqlite3.Connection,
@@ -372,3 +380,112 @@ def mark_retry_wait(
             expected_state="in_flight",
             target_state="retry_wait",
         )
+
+# Evaluation evidence operations
+
+def record_collector_observation(
+    connection: sqlite3.Connection,
+    *,
+    run_id: str,
+    topic: str,
+    qos: int,
+    retained: bool,
+    mqtt_duplicate: bool,
+    raw_message: bytes,
+    message: TelemetryMessage,
+) -> int:
+    """
+    Record one collector observation.
+    Repeated message identities are intentionally retained because
+    duplicate observations form part of the later EO2 evaluation.
+    """
+    received_at = utc_now()
+
+    with connection:
+        cursor = connection.execute(
+            """
+            INSERT INTO collector_observations (
+                run_id,
+                received_at,
+                topic,
+                qos,
+                retained,
+                mqtt_duplicate,
+                message_id,
+                device_id,
+                publisher_session_id,
+                source_sequence,
+                source_timestamp,
+                priority,
+                payload,
+                payload_hash,
+                raw_message
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                run_id,
+                received_at,
+                topic,
+                qos,
+                int(retained),
+                int(mqtt_duplicate),
+                message.message_id,
+                message.device_id,
+                message.publisher_session_id,
+                message.source_sequence,
+                message.source_timestamp,
+                message.priority,
+                normalised_payload_json(message.payload),
+                calculate_payload_hash(message.payload),
+                raw_message,
+            ),
+        )
+    return int(cursor.lastrowid)
+
+
+def record_collector_rejection(
+    connection: sqlite3.Connection,
+    *,
+    run_id: str,
+    topic: str,
+    qos: int,
+    retained: bool,
+    mqtt_duplicate: bool,
+    raw_message: bytes,
+    reason_code: str,
+    detail: str,
+) -> int:
+    """Record an upstream publication that cannot be validated."""
+    received_at = utc_now()
+
+    with connection:
+        cursor = connection.execute(
+            """
+            INSERT INTO collector_rejections (
+                run_id,
+                received_at,
+                topic,
+                qos,
+                retained,
+                mqtt_duplicate,
+                reason_code,
+                detail,
+                raw_message
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                run_id,
+                received_at,
+                topic,
+                qos,
+                int(retained),
+                int(mqtt_duplicate),
+                reason_code,
+                detail,
+                raw_message,
+            ),
+        )
+
+    return int(cursor.lastrowid)

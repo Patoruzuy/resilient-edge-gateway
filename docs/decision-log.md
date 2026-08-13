@@ -223,9 +223,9 @@ publication. A confirmed MQTT acknowledgement changes the record to
 `broker_acknowledged`, while publication failure or acknowledgement
 timeout changes it to `retry_wait`.
 
-TMA03 also distinguishe broker acknowledgement from end-to-end delivery
+TMA03 also differences broker acknowledgement from end-to-end delivery
 evidence. A broker acknowledgement confirms the MQTT interaction with the
-upstream broker but does not prove that the evaluation collector observed
+upstream broker but does not prove that the evaluation collector has seen
 the message.
 
 ### Decision
@@ -234,7 +234,6 @@ The upstream worker selects and publishes one pending record at
 a time using MQTT QoS 1.
 
 The worker:
-
 1. Select the oldest eligible `pending` outbox record.
 2. Change the durable state to `in_flight`.
 3. Increment `attempt_count` and record `last_attempt_at`.
@@ -251,12 +250,12 @@ If no `pending` record exists, the operation returns without publishing.
 
 The one-message provides a simple, observable implementation of
 the durable acknowledgement state model before backlog replay is
-introduced.
+implemented.
 
 It also keeps the publication separate from controlled recovery.
-Automatically draining every pending record at this stage would introduce
+Automatically draining every pending record at this stage would bring
 an uncontrolled store-and-forward mechanism and would conflict with the
-TMA03 design, which requires link-stability detection and bounded replay.
+TMA03 design, which requires link-stability detection and replay.
 
 ### Ordering
 
@@ -266,13 +265,13 @@ Uses:
 
 This provides deterministic selection of older pending records. The later
 controlled-recovery scheduler will introduce the full device-ordering,
-bounded batching and priority behaviour defined in TMA03.
+batching and priority behaviour defined in TMA03.
 
 ### Acknowledgement uncertainty
 
 A timeout or uncertain publication result is not treated as proof of
 failure at the broker. The row moves to `retry_wait` because the gateway
-cannot know with certainty whether the broker accepted the publication.
+cannot know for sure whether the broker accepted the publication.
 
 This preserves the at-least-once recovery condition described in TMA03
 and allows resulting duplicates to be measured later.
@@ -301,3 +300,91 @@ This decision does not implement:
 Explain the durable state transition sequence and make clear that
 `broker_acknowledged` represents broker-level evidence rather than
 collector-confirmed delivery.
+
+
+## D007: Evaluation evidence with shared persistence modules
+
+Date: 10/08/2026
+Status: Accepted
+
+### TMA03 position
+
+TMA03 differences successful upstream MQTT acknowledgement from
+independent evidence that telemetry was actually observed after reaching
+the upstream broker.
+
+The evaluation collector therefore needs its own evidence store while
+remaining outside the gateway's operational delivery state.
+
+### Decision
+
+Use a separate MQTT evaluation collector subscribed to the upstream
+broker.
+
+Collector evidence is stored in a dedicated SQLite database:
+
+`data/evaluation.db`
+
+Gateway operational state remains in:
+
+`data/gateway.db`
+
+The two databases use separate SQL schemas but share the existing Python
+database and repository modules.
+
+Each valid observation records:
+
+- evaluation run identifier;
+- receipt timestamp;
+- MQTT topic;
+- MQTT QoS;
+- retained flag;
+- MQTT duplicate flag;
+- stable telemetry identity;
+- source timestamp;
+- priority;
+- application payload;
+- canonical payload hash;
+- raw MQTT message.
+
+Rejected upstream publications are stored separately.
+
+### Reason
+
+The evaluation database must record what the collector actually
+observes rather than modify or deduplicate the evidence.
+
+Keeping `evaluation.db` separate from `gateway.db` prevents collector
+measurements from being mixed up with gateway operational state.
+
+### Payload hashing
+
+`payload_hash` remains derived evidence rather than a field in the
+incoming `TelemetryMessage` contract.
+
+The collector uses the same payload-hash calculation as the
+gateway so that publisher, gateway and collector evidence can later be
+reconciled consistently.
+
+### Repeated observations
+
+Two observations with the same stable telemetry identity are retained as
+two separate collector rows.
+
+This is necessary because duplicate delivery is itself a measurement
+required by EO2.
+
+### Relationship to TMA03
+
+This implements the independent evaluation-collector role already
+defined in TMA03 and does not change the submitted gateway architecture.
+
+The consolidation of Python database and repository functions is an
+implementation simplification only.
+
+### Final-report action
+
+Explain the distinction between gateway operational state and independent
+collector evidence, and show how `run_id`, message identity and payload
+hash support later delivery-completeness and duplicate-control
+calculations.

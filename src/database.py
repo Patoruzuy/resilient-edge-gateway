@@ -80,3 +80,36 @@ def open_database(database_path: str | Path, schema_path: str | Path) -> sqlite3
     except Exception:
         connection.close()
         raise
+
+def open_evaluation_database(
+    database_path: Path,
+    schema_path: Path,
+) -> sqlite3.Connection:
+    """
+    Open and initialise the independent evaluation database.
+
+    Evaluation evidence is stored separately from gateway operational
+    state so that measurement records do not affect the system being
+    evaluated.
+    """
+    database_path.parent.mkdir(parents=True,exist_ok=True,)
+    connection = sqlite3.connect(database_path,timeout=5.0,)
+    connection.row_factory = sqlite3.Row
+
+    try:
+        connection.execute("PRAGMA foreign_keys = ON")
+        connection.execute("PRAGMA busy_timeout = 5000")
+
+        # Ensure the schema exists in the database.
+        schema_sql = schema_path.read_text(encoding="utf-8")
+        connection.executescript(schema_sql)
+        journal_mode = connection.execute("PRAGMA journal_mode").fetchone()[0]
+
+        if str(journal_mode).lower() != "wal":
+            raise RuntimeError("Evaluation database is not using WAL mode.")
+
+        return connection
+
+    except Exception:
+        connection.close()
+        raise

@@ -30,10 +30,8 @@ def valid_payload():
 
 
 def test_valid_mqtt_publication_is_persisted(tmp_path):
-    connection = open_database(
-        tmp_path / "gateway.db",
-        SCHEMA_PATH,
-    )
+    database_path = tmp_path / "gateway.db"
+    connection = open_database(database_path, SCHEMA_PATH)
 
     try:
         result = process_mqtt_publication(
@@ -43,7 +41,6 @@ def test_valid_mqtt_publication_is_persisted(tmp_path):
         )
 
         assert result.outcome == IngestionOutcome.INSERTED
-
         row = connection.execute(
             """
             SELECT message_id, topic, delivery_state
@@ -60,10 +57,8 @@ def test_valid_mqtt_publication_is_persisted(tmp_path):
 
 
 def test_malformed_json_is_rejected(tmp_path):
-    connection = open_database(
-        tmp_path / "gateway.db",
-        SCHEMA_PATH,
-    )
+    database_path = tmp_path / "gateway.db"
+    connection = open_database(database_path, SCHEMA_PATH)
 
     try:
         result = process_mqtt_publication(
@@ -86,10 +81,8 @@ def test_malformed_json_is_rejected(tmp_path):
 
 
 def test_identical_publication_is_classified_as_duplicate(tmp_path):
-    connection = open_database(
-        tmp_path / "gateway.db",
-        SCHEMA_PATH,
-    )
+    database_path = tmp_path / "gateway.db"
+    connection = open_database(database_path, SCHEMA_PATH)
 
     try:
         first = process_mqtt_publication(

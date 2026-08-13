@@ -433,15 +433,12 @@ Observed:
 - Broker received a QoS 1 PUBLISH for `telemetry/sensor-001`.
 - Broker sent PUBACK for MQTT message identifier 1.
 - Independent subscriber received:
-
   `telemetry/sensor-001 {"temperature_c":18.5}`
 
 - Gateway reported:
-
   `outcome=broker_acknowledged row_id=2 message_id=msg-smoke-002 mid=1`
 
 - SQLite contained:
-
   `2|msg-smoke-002|broker_acknowledged|1|...|...`
 
 Conclusion:
@@ -456,3 +453,257 @@ TMA03 objectives:
 - DO2
 - Supports DO3
 - Foundation for EO1
+
+## EVAL-DB-01: Evaluation database initialisation
+
+Purpose:
+Verify that the collector evidence database initialises independently
+from the gateway operational database.
+
+Configuration:
+- Fresh `evaluation.db`
+- `evaluation_schema.sql`
+- No MQTT broker required
+- No NetEm impairment
+
+Expected:
+- Evaluation schema is executed.
+- SQLite WAL mode is active.
+- Schema version is 1.
+- `collector_observations` exists.
+- `collector_rejections` exists.
+- No gateway outbox state is required.
+
+Actual:
+Passed.
+
+Evidence:
+- Passing evaluation database test.
+- `evaluation_schema.sql`.
+- `src/database.py`.
+
+TMA03 objectives:
+- Foundation for EO1
+- Foundation for EO2
+
+## COL-01: Valid collector observation persistence
+
+Purpose:
+Verify that a valid upstream telemetry observation can be stored as
+independent evaluation evidence.
+
+Expected:
+- One collector observation is created.
+- `run_id` is retained.
+- Stable telemetry identity is retained.
+- Receipt timestamp is populated.
+- Payload is stored canonically.
+- Payload hash is calculated consistently.
+- Raw MQTT evidence is retained.
+
+Actual:
+Passed.
+
+Evidence:
+- Passing collector repository tests.
+- `collector_observations` inspection.
+- `src/repository.py`.
+
+TMA03 objectives:
+- EO1
+
+## COL-02: Repeated collector observations are preserved
+
+Purpose:
+Verify that repeated observations of the same stable telemetry identity
+are retained rather than deduplicated by the evaluation database.
+
+Configuration:
+- One valid telemetry identity
+- Same message recorded twice
+- Same evaluation run
+- No NetEm impairment
+
+Expected:
+- Two collector rows are created.
+- Both rows retain the same stable message identity.
+- Both observations retain the same canonical payload hash.
+- No uniqueness constraint suppresses the second arrival.
+
+Actual:
+Passed.
+
+Problems found:
+- The first test run referenced an undefined test helper.
+- After correcting the test fixture, collector persistence attempted to
+  read a non-existent `TelemetryMessage.payload_hash` attribute.
+
+Corrective action:
+- Added/reused valid telemetry test helpers.
+- Kept `payload_hash` as derived evidence.
+- Calculated the hash using the existing canonical payload-hash helper.
+- Stored raw MQTT evidence as bytes.
+
+Evidence:
+- `test_collector_preserves_repeated_observations`
+- Passing full automated test suite.
+- Two rows in `collector_observations`.
+
+TMA03 objectives:
+- Foundation for EO2
+
+## COL-02: Repeated collector observations are preserved
+
+Purpose:
+Verify that repeated observations of the same stable telemetry identity
+are retained rather than deduplicated by the evaluation database.
+
+Configuration:
+- One valid telemetry identity
+- Same message recorded twice
+- Same evaluation run
+- No NetEm impairment
+
+Expected:
+- Two collector rows are created.
+- Both rows retain the same stable message identity.
+- Both observations retain the same canonical payload hash.
+- No uniqueness constraint suppresses the second arrival.
+
+Actual:
+Passed.
+
+Problems found:
+- The first test run referenced an undefined test helper.
+- After correcting the test fixture, collector persistence attempted to
+  read a non-existent `TelemetryMessage.payload_hash` attribute.
+
+Corrective action:
+- Added/reused valid telemetry test helpers.
+- Kept `payload_hash` as derived evidence.
+- Calculated the hash using the existing canonical payload-hash helper.
+- Stored raw MQTT evidence as bytes.
+
+Evidence:
+- `test_collector_preserves_repeated_observations`
+- Passing full automated test suite.
+- Two rows in `collector_observations`.
+
+TMA03 objectives:
+- Foundation for EO2
+
+## COL-LIVE-01: Real upstream collector subscription
+
+Purpose:
+Verify that the evaluation collector can connect to the real upstream
+Mosquitto broker and establish its telemetry subscription.
+
+Configuration:
+- Upstream broker: `localhost:1884`
+- Collector client: `edge-gateway-evaluation-collector`
+- Run ID: `baseline-smoke-001`
+- Topic filter: `telemetry/#`
+- QoS: 1
+- No NetEm impairment
+
+Expected:
+- Collector connects successfully.
+- Broker accepts the client.
+- Collector subscribes to `telemetry/#`.
+- Broker returns SUBACK.
+- Collector remains connected awaiting observations.
+
+Actual:
+Passed.
+
+Observed:
+- Mosquitto accepted the collector connection.
+- Subscription to `telemetry/#` at QoS 1 was accepted.
+- Collector logged successful subscription under
+  `baseline-smoke-001`.
+
+Evidence:
+- Mosquitto broker log.
+- Collector runtime log.
+
+TMA03 objectives:
+- Foundation for EO1
+
+## E2E-01: Baseline publisher-to-collector path
+
+Purpose:
+Verify the complete baseline telemetry path from local publication to
+independent collector evidence.
+
+Configuration:
+- Local broker: `localhost:1883`
+- Upstream broker: `localhost:1884`
+- Collector run: `smoke-001`
+- Topic: `telemetry/sensor-001`
+- Message: `collector-smoke-001`
+- QoS: 1
+- No NetEm impairment
+
+Expected:
+- Local gateway accepts and durably stores the telemetry.
+- Initial gateway state is `pending`.
+- Baseline upstream publisher forwards the full telemetry envelope.
+- Upstream broker acknowledges the QoS 1 publication.
+- Gateway state becomes `broker_acknowledged`.
+- Evaluation collector observes the same stable message identity.
+- One matching record appears in `evaluation.db`.
+
+Actual:
+Passed
+
+Observed:
+
+- Local gateway accepted `collector-smoke-001`.
+- `gateway.db` initially stored the message as:
+
+  `3|collector-smoke-001|2026-08-09T12:00:00.000000Z|pending`
+
+- The upstream publisher connected successfully to `localhost:1884`.
+- The publisher forwarded `collector-smoke-001` using MQTT QoS 1.
+- The upstream broker received the publication and returned `PUBACK`.
+- Gateway publication result was:
+
+  `outcome=broker_acknowledged row_id=3
+  message_id=collector-smoke-001 mid=1`
+
+- Final gateway state was:
+
+  `3|collector-smoke-001|broker_acknowledged|1|...`
+
+- The upstream broker forwarded the publication to `edge-gateway-evaluation-collector`.
+- The broker received the collector's QoS 1 `PUBACK`.
+- `evaluation.db` contained:
+
+  `baseline-smoke-001|collector-smoke-001|sensor-001|`
+  `session-collector-001|1|...|`
+  `41bffd2bb7d92e8839969485a2cff7d87b1297fd660e5fb28e6a8c82a9f1db3e`
+
+Conclusion:
+
+- The publisher-to-collector path operates correctly under normal local network conditions.
+- Broker acknowledgement and downstream collector observation are independently represented.
+- The message identity is preserved across the complete path.
+- The collector now provides the independent evidence required for later
+  delivery-completeness calculations.
+- This smoke test validates the measurement path but is not itself a good impairment-based evaluation.
+
+Evidence:
+
+- Gateway ingestion log.
+- `gateway.db` state before publication.
+- Upstream publisher log.
+- Mosquitto broker log.
+- `gateway.db` state after acknowledgement.
+- `evaluation.db` collector observation.
+- Run identifier `baseline-smoke-001`.
+
+TMA03 objectives:
+
+- Foundation for EO1
+- Foundation for EO2
+- Supports later DO3 recovery evaluation

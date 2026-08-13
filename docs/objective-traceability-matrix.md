@@ -13,8 +13,8 @@ TMA03 to their implementation, planned evidence and current status.
 | DO3 | Link-stability detection and bounded backlog replay | Recovery logs, scheduler tests and outage/reconnection integration tests | Not started |
 | DO4 | Composite idempotency key, SQLite uniqueness constraints and canonical payload-hash comparison | Duplicate retransmission tests, conflicting-payload tests and classification evidence | Implemented |
 
-| EO1 | Publisher manifest and evaluation collector manifest | Delivery-completeness calculation using publisher and collector evidence | Not started |
-| EO2 | Duplicate observations across gateway and collector evidence | Duplicate counts, retransmission scenarios and duplicate-control results | Not started |
+| EO1 | Upstream evaluation collector with specific observation evidence | Passing publisher-to-collector smoke test; later publisher-manifest reconciliation and delivery-completeness calculation | In progress |
+| EO2 | Duplicate observations across gateway and collector evidence | Duplicate counts, retransmission scenarios and duplicate-control results | In progress |
 | EO3 | Recovery timing and backlog-state timestamps | Backlog drain-time results under defined outage and recovery scenarios | Not started |
 | EO4 | SQLite database and transaction measurements | Database-size records, transaction counts and storage-growth measurements | Not started |
 | EO5 | Linux traffic control and NetEm scenario configuration | Recorded impairment commands, parameter sets and repeated trials | Exploratory only |
@@ -108,21 +108,30 @@ payload tests are confirmed as passing.
 
 ### EO1
 
-Baseline upstream publication has established the path to the upstream
-broker, and an independent `mosquitto_sub` client has confirmed receipt
-during smoke testing.
+An independent evaluation collector has now been implemented with a
+separate SQLite evidence database and evaluation run identifiers.
 
-However, this diagnostic subscriber is not the formal evaluation
-collector. EO1 remains **Not started** until publisher and collector
-manifests are generated and used to calculate delivery completeness.
+Automated tests confirm that valid collector observations can be kept
+with stable message identity, receipt timestamps and payload hashes. A
+real collector has also connected successfully to the upstream Mosquitto
+broker.
+
+EO1 still **In progress** because delivery completeness has not yet been
+calculated against a publisher manifest. The current end-to-end smoke test
+must also complete the upstream publication step before the matching collector observation can be confirmed.
 
 ### EO2
 
-Repository-level duplicate classification exists as part of DO4.
-However, formal duplicate-control evaluation across gateway recovery and
-collector observations has not begun.
+Gateway-level duplicate classification is already implemented under DO4.
 
-EO2 therefore remains **Not started**.
+The evaluation collector now deliberately preserves repeated
+observations of the same stable message identity. Automated testing
+confirms that repeated arrivals produce separate evidence rows rather
+than being silently deduplicated.
+
+EO2 stays **In progress** because the recovery scenarios have not yet
+been used to quantify expected retransmissions, conflicting content and
+collector-observed duplicates.
 
 ### EO5
 

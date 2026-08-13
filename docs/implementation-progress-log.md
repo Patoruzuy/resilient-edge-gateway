@@ -470,8 +470,7 @@ Next action should be:
 - Commit the verified `feat/upstream-publication` slice.
 - Merge the completed slice into the project baseline and confirm that
   the complete test suite remains green.
-- Start `feat/evaluation-collector` to replace the diagnostic subscriber
-  with persistent, independent downstream output evidence.
+- Start `feat/evaluation-collector`.
 - Use the publisher and collector evidence later to calculate delivery
   completeness under EO1.
 
@@ -485,3 +484,204 @@ Next action should be:
   collector-based delivery-completeness measurement.
 - EO2: establishes acknowledgement and retransmission behaviour required
   for later duplicate-control evaluation.
+
+
+  ## 09/08/2026
+
+  Branch:
+
+  - `feat/evaluation-collector`
+
+  Implementation slice:
+
+  - Evaluation collector
+
+  Completed:
+
+  - Added a MQTT evaluation collector for observing
+    publications sent through the upstream broker.
+  - Configured the collector to subscribe to `telemetry/#` using MQTT
+    QoS 1.
+  - Added a separate `evaluation.db` database for experimental evidence
+    while keeping `gateway.db` exclusively for gateway operational state.
+  - Added `evaluation_schema.sql` for collector observations and rejected
+    messages.
+  - Reused the existing database and repository modules rather than
+    introducing separate evaluation modules.
+  - Added run identifiers so that collector observations can be linked
+    with individual experimental runs.
+  - Recorded collector timestamps, MQTT topic and QoS metadata,
+    stable message identity, source sequence, source timestamp, priority,
+    payload and payload hash.
+  - Preserved raw MQTT message content for later diagnostic and evaluation
+    evidence.
+  - Deliberately kept repeated collector observations rather than
+    deleting the duplicates, allowing all deliveries to
+    remain visible for later EO2 evaluation.
+  - Added automated repository testing confirming that repeated
+    observations with the same message identity are stored as separate
+    collector records.
+  - Ran the complete automated test suite successfully.
+  - Started a real evaluation collector using run identifier
+    `baseline-smoke-001`.
+  - Verified successful connection and subscription to the upstream
+    Mosquitto broker on `localhost:1884`.
+
+  Problems identified:
+
+  - The first collector repository test failed because the test referenced
+    a helper function that had not been defined in
+    `tests/test_repository.py`.
+  - After correcting the test, the collector repository test
+    progressed into persistence logic and exposed an incorrect `payload_hash`
+    attribute assigned to `TelemetryMessage` where the correct name is `payload`.
+  - `payload_hash` is derivative evidence rather than part of the incoming
+    telemetry payload.
+  - The collector test also required a clear distinction between the parsed
+    telemetry structure and the raw MQTT bytes retained as evaluation
+    evidence.
+  - During the initial real smoke test, the collector subscribed
+    successfully and the local gateway stored `collector-smoke-001`, but
+    the message remained in `pending` state because upstream
+    publication had not yet been invoked. Hence, `evaluation.db` correctly
+    does not collect observation at that point.
+
+  Corrective actions:
+
+  - Added a valid telemetry test helper for repository tests.
+  - Changed collector persistence to calculate the payload hash using the
+    existing payload-hash function.
+  - Kept `payload_hash` outside `TelemetryMessage`, preserving the agreed
+    telemetry contract.
+  - Ensured that raw collector evidence is represented as MQTT-style UTF-8
+    bytes rather than as a dictionary.
+  - Verified that two observations of the same stable message identity
+    produce two rows in `collector_observations`.
+  - Began consolidating repeated test builders such as `valid_message`,
+    `valid_payload` and `valid_message_bytes` into a shared
+    `tests/helpers.py` module.
+  - Kept separate SQLite databases files while sharing the existing database
+    and repository modules to avoid unnecessary code.
+
+  Automated verification:
+
+  - All automated tests passed after the collector repository corrections.
+  - The upstream identity-preservation test remains passing.
+  - Repeated collector observations are retained rather than silently
+    deduplicated.
+  - Existing database, ingestion, validation, repository and upstream
+    publication behaviour remains green.
+
+  Initial real smoke-test evidence:
+
+  - Upstream Mosquitto broker started successfully on `localhost:1884`.
+  - Evaluation collector client:
+    `edge-gateway-evaluation-collector`
+  - Evaluation run:
+    `baseline-smoke-001`
+  - Subscription:
+    `telemetry/#`
+  - QoS:
+    1
+  - Collector subscription was accepted by the upstream broker.
+  - Local gateway received:
+    `collector-smoke-001`
+  - Gateway persisted the message with:
+    `delivery_state = pending`
+  - No collector observation was present before upstream publication,
+    which is the expected result while the message remains local.
+
+
+  End-to-end verification:
+
+  - Passed.
+  - `collector-smoke-001` was accepted by the local gateway and committed to the SQLite WAL outbox with initial state `pending`.
+  - The baseline upstream publisher selected the pending record and forwarded the complete telemetry envelope to the upstream Mosquitto broker using MQTT QoS 1.
+  - The upstream broker confirmed receipt of the publication and returned `PUBACK` to the `edge-gateway-upstream` client.
+  - The gateway changed the durable outbox state from `pending` through  `in_flight` to `broker_acknowledged`.
+  - SQLite confirmed:
+    - `delivery_state = broker_acknowledged`
+    - `attempt_count = 1`
+    - populated `acknowledged_at`
+  - The upstream broker forwarded the same publication to the independent `edge-gateway-evaluation-collector` client.
+  - The broker subsequently received `PUBACK` from the evaluation collector.
+  - The evaluation collector persisted an independent observation under run identifier `baseline-smoke-001`.
+  - `evaluation.db` retained:
+    - `message_id = collector-smoke-001`
+    - `device_id = sensor-001`
+    - `publisher_session_id = session-collector-001`
+    - `source_sequence = 1`
+    - collector receipt timestamp
+    - canonical payload hash
+  - The matching collector payload hash was: `41bffd2bb7d92e8839969485a2cff7d87b1297fd660e5fb28e6a8c82a9f1db3e`
+  - This demonstrates the complete path from local telemetry publication to independent downstream receipt evidence.
+
+  Evidence:
+
+  - Local gateway database row:
+    `3|collector-smoke-001|pending` before upstream publication.
+  - Upstream publication result:
+    `outcome=broker_acknowledged row_id=3 message_id=collector-smoke-001 mid=1`
+  - Final gateway database state:
+    `3|collector-smoke-001|broker_acknowledged|1|...`
+  - Evaluation run:
+    `baseline-smoke-001`
+  - Evaluation collector:
+    `edge-gateway-evaluation-collector`
+  - Upstream broker:
+    `localhost:1884`
+  - Topic:
+    `telemetry/sensor-001`
+  - MQTT QoS:
+    1
+  - Broker acknowledgement to gateway:
+    confirmed.
+  - Broker forwarding to collector:
+    confirmed.
+  - Collector acknowledgement to broker:
+    confirmed.
+  - Independent collector database observation:
+    confirmed.
+
+  Outcome:
+
+  - The publisher-to-collector measurement path is operational.
+  - Broker acknowledgement and collector observation are now separate pieces of evidence.
+  - Telemetry identity is preserved across the gateway, upstream publication and evaluation collector.
+  - The collector can now provide independent evidence needed for later delivery-completeness and duplicate-control evaluation.
+
+  Limitations:
+
+  - Delivery completeness has not yet been calculated.
+  - The current live smoke test does not yet demonstrate the complete
+    publisher-to-collector path.
+  - Duplicate observations are preserved but formal duplicate
+    classification and EO2 measurement remain outstanding.
+  - Stale `in_flight` recovery remains outstanding.
+  - Link-stability detection and bounded backlog replay remain outstanding.
+  - NetEm impairment has not yet been applied to the complete MQTT
+    publisher-to-collector path.
+
+  Relationship to TMA03:
+
+  - Implements the independent evaluation collector required to distinguish
+    broker acknowledgement from downstream receipt evidence.
+  - Supports the publisher-to-collector evidence path planned in TMA03.
+  - Provides the measurement foundation for EO1 and EO2.
+  - Does not yet constitute formal evaluation evidence under degraded
+    network conditions.
+
+  Next action:
+
+  - Keep the gateway, broker and evaluation-database outputs as implementation evidence.
+  - Commit and merge `feat/evaluation-collector`.
+  - Begin the next recovery-focused slice.
+  - Implement the mechanisms required to recover uncertain or interrupted
+    upstream publication before introducing bounded controlled replay.
+
+  TMA03 objectives:
+
+  - EO1: implementation foundation and independent receipt evidence.
+  - EO2: implementation foundation through preservation of repeated
+    observations.
+  - Supports later DO3 recovery evaluation.

@@ -4,16 +4,11 @@ import paho.mqtt.client as mqtt
 
 from src.database import open_database
 from src.repository import store_message
-from src.upstream import (
-    PublicationOutcome,
-    publish_one_pending,
-)
+from src.upstream import PublicationOutcome, publish_one_pending
 from src.validation import parse_telemetry_message
 
 
-SCHEMA_PATH = (
-    Path(__file__).resolve().parent.parent / "schema.sql"
-)
+SCHEMA_PATH = Path(__file__).resolve().parent.parent / "schema.sql"
 
 
 class FakeMessageInfo:
@@ -55,9 +50,7 @@ class FakeMqttClient:
                 "retain": retain,
             }
         )
-
         return self.message_info
-
 
 def create_pending_message(connection):
     message = parse_telemetry_message(
@@ -75,21 +68,14 @@ def create_pending_message(connection):
         }
     )
 
-    return store_message(
-        connection,
-        message,
-        "telemetry/sensor-001",
-    )
+    return store_message(connection, message, "telemetry/sensor-001")
 
 def test_successful_publish_becomes_broker_acknowledged(tmp_path):
-    connection = open_database(
-        tmp_path / "gateway.db",
-        SCHEMA_PATH,
-    )
+    database_path = tmp_path / "gateway.db"
+    connection = open_database(database_path, SCHEMA_PATH)
 
     try:
         stored = create_pending_message(connection)
-
         client = FakeMqttClient(
             FakeMessageInfo(
                 rc=mqtt.MQTT_ERR_SUCCESS,
@@ -97,13 +83,11 @@ def test_successful_publish_becomes_broker_acknowledged(tmp_path):
                 published=True,
             )
         )
-
         result = publish_one_pending(
             connection,
             client,
             acknowledgement_timeout_seconds=2.0,
         )
-
         assert (
             result.outcome
             == PublicationOutcome.BROKER_ACKNOWLEDGED
@@ -135,14 +119,11 @@ def test_successful_publish_becomes_broker_acknowledged(tmp_path):
 
 
 def test_publish_error_moves_message_to_retry_wait(tmp_path):
-    connection = open_database(
-        tmp_path / "gateway.db",
-        SCHEMA_PATH,
-    )
+    database_path = tmp_path / "gateway.db"
+    connection = open_database(database_path, SCHEMA_PATH)
 
     try:
         stored = create_pending_message(connection)
-
         client = FakeMqttClient(
             FakeMessageInfo(
                 rc=mqtt.MQTT_ERR_NO_CONN,
@@ -150,12 +131,7 @@ def test_publish_error_moves_message_to_retry_wait(tmp_path):
                 published=False,
             )
         )
-
-        result = publish_one_pending(
-            connection,
-            client,
-        )
-
+        result = publish_one_pending(connection, client)
         assert result.outcome == PublicationOutcome.RETRY_WAIT
 
         row = connection.execute(
@@ -174,17 +150,12 @@ def test_publish_error_moves_message_to_retry_wait(tmp_path):
         connection.close()
 
 
-def test_acknowledgement_timeout_moves_message_to_retry_wait(
-    tmp_path,
-):
-    connection = open_database(
-        tmp_path / "gateway.db",
-        SCHEMA_PATH,
-    )
+def test_acknowledgement_timeout_moves_message_to_retry_wait(tmp_path):
+    database_path = tmp_path / "gateway.db"
+    connection = open_database(database_path, SCHEMA_PATH)
 
     try:
         stored = create_pending_message(connection)
-
         client = FakeMqttClient(
             FakeMessageInfo(
                 rc=mqtt.MQTT_ERR_SUCCESS,
@@ -195,12 +166,7 @@ def test_acknowledgement_timeout_moves_message_to_retry_wait(
                 ),
             )
         )
-
-        result = publish_one_pending(
-            connection,
-            client,
-        )
-
+        result = publish_one_pending(connection, client)
         assert result.outcome == PublicationOutcome.RETRY_WAIT
 
         row = connection.execute(
@@ -219,20 +185,14 @@ def test_acknowledgement_timeout_moves_message_to_retry_wait(
 
 
 def test_no_pending_message_returns_without_publishing(tmp_path):
-    connection = open_database(
-        tmp_path / "gateway.db",
-        SCHEMA_PATH,
-    )
+    database_path = tmp_path / "gateway.db"
+    connection = open_database(database_path, SCHEMA_PATH)
 
     try:
         client = FakeMqttClient(
             FakeMessageInfo()
         )
-
-        result = publish_one_pending(
-            connection,
-            client,
-        )
+        result = publish_one_pending(connection, client)
 
         assert result.outcome == PublicationOutcome.NO_PENDING
         assert client.publications == []
@@ -241,17 +201,12 @@ def test_no_pending_message_returns_without_publishing(tmp_path):
         connection.close()
 
 
-def test_upstream_publication_preserves_message_identity(
-    tmp_path,
-):
-    connection = open_database(
-        tmp_path / "gateway.db",
-        SCHEMA_PATH,
-    )
+def test_upstream_publication_preserves_message_identity(tmp_path):
+    database_path = tmp_path / "gateway.db"
+    connection = open_database(database_path, SCHEMA_PATH)
 
     try:
         create_pending_message(connection)
-
         client = FakeMqttClient(
             FakeMessageInfo(
                 rc=mqtt.MQTT_ERR_SUCCESS,
@@ -259,26 +214,13 @@ def test_upstream_publication_preserves_message_identity(
                 published=True,
             )
         )
-
-        publish_one_pending(
-            connection,
-            client,
-        )
-
-        forwarded_payload = (
-            client.publications[0]["payload"]
-        )
-
-        message = parse_telemetry_message(
-            forwarded_payload
-        )
+        publish_one_pending(connection,client)
+        forwarded_payload = (client.publications[0]["payload"])
+        message = parse_telemetry_message(forwarded_payload)
 
         assert message.message_id == "msg-000001"
         assert message.device_id == "sensor-001"
-        assert (
-            message.publisher_session_id
-            == "session-001"
-        )
+        assert message.publisher_session_id == "session-001"
         assert message.source_sequence == 1
 
     finally:
