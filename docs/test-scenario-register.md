@@ -1,709 +1,272 @@
 # Test scenario register
 
-## DB-01: Database initialisation
+This register records the main tests used to support the TMA03 objectives. Detailed debugging history is kept in the implementation progress log.
 
-Purpose:
-Verify that a new gateway database is created using the agreed schema.
+## Database, validation and ingestion
 
-Configuration:
-- Fresh SQLite database path
-- Repository-root `schema.sql`
-- No MQTT broker required
-- No NetEm impairment
+### DB-01: Database initialisation
 
-Expected:
-- `schema.sql` is executed
-- `outbox_messages` is created
-- SQLite WAL mode is active
-- Schema version is 1
+**Purpose:** Confirm that a fresh gateway database is created using the agreed SQLite WAL schema.
 
-Actual:
-Passed after correcting database initialisation and schema path handling.
+**Expected:** `schema.sql` runs, `outbox_messages` exists, WAL mode is active and schema version is 1.
 
-Problems found:
-- The schema script was not originally executed.
-- The test used an unreliable schema path.
-- Indentation errors were present in `database.py`.
+**Actual:** Passed after correcting schema execution and test path handling.
 
-Evidence:
-- Passing database test output
-- Updated `database.py`
-- Updated `test_database.py`
-- Git commit on `feat/sqlite-outbox`
+**Evidence:** database tests, `database.py`, `schema.sql`.
 
-TMA03 objectives:
-- DO2
+**Objectives:** DO2
 
-## VAL-01: Valid telemetry message
+### DB-02: Persistence after reopening
 
-Purpose:
-Verify that a valid telemetry payload is accepted and converted into the
-agreed `TelemetryMessage` representation.
+**Purpose:** Confirm that a committed outbox record remains available after closing and reopening the database.
 
-Expected:
-- Required fields are accepted.
-- Source timestamp is normalised to UTC.
-- Canonical payload representation can be generated.
+**Expected:** identity, payload and `pending` state remain unchanged.
 
-Actual:
-Passed.
+**Actual:** Passed.
 
-TMA03 objectives:
-- DO1
+**Evidence:** database reopening test and SQLite inspection.
 
-## VAL-02: Malformed telemetry rejection
+**Objectives:** DO2
 
-Purpose:
-Verify that malformed JSON or a message missing a required field is
-rejected before durable persistence.
+### VAL-01: Valid telemetry message
 
-Expected:
-- Validation fails with an appropriate reason code.
-- No outbox row is created.
+**Purpose:** Confirm that a valid telemetry message is accepted and normalised.
 
-Actual:
-Passed.
+**Expected:** required fields are accepted, source timestamp is normalised to UTC and canonical payload handling succeeds.
 
-TMA03 objectives:
-- DO1
+**Actual:** Passed.
 
-## ING-01: Valid local MQTT ingestion
+**Objectives:** DO1
 
-Purpose:
-Verify that a valid publication received from the local MQTT ingestion
-path is validated and committed to the SQLite WAL outbox.
+### VAL-02: Malformed telemetry rejection
 
-Expected:
-- Publication is accepted.
-- One `pending` row is created.
-- MQTT topic is recorded.
-- Gateway process continues normally.
+**Purpose:** Confirm that malformed JSON or a missing required field is rejected before local persistence.
 
-Actual:
-Passed.
+**Expected:** validation fails and no outbox row is created.
 
-TMA03 objectives:
-- DO1
-- DO2
+**Actual:** Passed.
 
-## ING-02: Invalid local MQTT ingestion
+**Objectives:** DO1
 
-Purpose:
-Verify that malformed telemetry received through the MQTT ingestion path
-does not enter the durable outbox.
+### ING-01: Valid local MQTT ingestion
 
-Expected:
-- Publication is classified as rejected.
-- No outbox row is created.
-- The MQTT ingestion process remains operational.
+**Purpose:** Confirm that a valid local MQTT publication is validated and committed to the SQLite WAL outbox.
 
-Actual:
-Passed.
+**Expected:** one `pending` row is created and the MQTT topic is recorded.
 
-TMA03 objectives:
-- DO1
+**Actual:** Passed.
 
-## OUTBOX-01: Valid message persistence
+**Objectives:** DO1, DO2
 
-Purpose:
-Verify that a validated telemetry message can be committed to the
-SQLite WAL outbox.
+### ING-02: Invalid local MQTT ingestion
 
-Configuration:
-- No MQTT broker required
-- Valid `TelemetryMessage`
-- One repository insertion
-- No NetEm impairment
+**Purpose:** Confirm that malformed telemetry received through MQTT does not enter the durable outbox.
 
-Expected:
-- One `pending` outbox row
-- Attempt count set to zero
-- Message fields stored correctly
-- No duplicate or conflict outcome
+**Expected:** the publication is rejected and the ingestion process continues.
 
-Actual:
-Passed after aligning `schema.sql` with the repository insert fields.
+**Actual:** Passed.
 
-Problems found:
-- The original schema omitted columns required by `repository.py`.
+**Objectives:** DO1
 
-Evidence:
-- Passing `test_repository.py`
-- SQLite schema
-- Repository test output
-- Git commit on `feat/sqlite-outbox`
+## Outbox and duplicate control
 
-TMA03 objectives:
-- DO2
+### OUTBOX-01: Valid message persistence
 
+**Purpose:** Confirm that a validated message can be committed to the SQLite WAL outbox.
 
-## OUTBOX-02: Identical retransmission
+**Expected:** one `pending` row is created with attempt count zero and the expected telemetry fields.
 
-Purpose:
-Verify that an identical idempotency key and payload hash is classified
-as an expected duplicate.
+**Actual:** Passed after the schema was aligned with the repository fields.
 
-Expected:
-- Original row remains unchanged
-- No second outbox row is created
-- Outcome is `duplicate`
+**Objectives:** DO2
 
-Actual:
-Passed
+### OUTBOX-02: Identical retransmission
 
-Observed:
-- The second message with the same idempotency key and payload hash was
-  classified as `duplicate`.
-- No additional outbox row was created.
-- The original durable record remained unchanged.
+**Purpose:** Confirm that the same idempotency key and payload hash is treated as an expected retransmission duplicate.
 
-Evidence:
-- Passing duplicate-classification repository test.
-- SQLite row-count assertion.
-- `repository.py`.
-
-TMA03 objectives:
-- DO4
-
-
-## OUTBOX-03: Conflicting message content
-
-Purpose:
-Verify that the same idempotency key with a different payload hash is
-classified as a data-integrity anomaly.
-
-Expected:
-- Original row remains unchanged
-- No second outbox row is created
-- Outcome is `conflict`
+**Expected:** no second outbox row is created and the outcome is `duplicate`.
 
-Actual:
-Passed.
+**Actual:** Passed.
 
-Observed:
-- The same idempotency key with a different payload hash was classified
-  as `conflict`.
-- No additional outbox row was created.
-- The original message remained unchanged.
-
-Evidence:
-- Passing conflicting-payload repository test.
-- SQLite row-count assertion.
-- `repository.py`.
-
-TMA03 objectives:
-- DO4
-
-
-## DB-02: Persistence after reopening
-
-Purpose:
-Verify that a committed outbox row remains available after the database
-connection is closed and reopened.
+**Evidence:** duplicate-classification repository test and row-count assertion.
 
-Expected:
-- The row remains present
-- Its state remains `pending`
-- Its message identity and payload remain unchanged
-
-Actual:
-Passed.
-
-Observed:
-- The database connection was closed and reopened.
-- The committed message remained present.
-- Its `pending` state, identity and stored payload were preserved.
-
-Evidence:
-- Passing database-reopening persistence test.
-- SQLite inspection after reopening.
-
-TMA03 objectives:
-- DO2
+**Objectives:** DO4
 
-
-## UP-01: Successful upstream QoS 1 publication
+### OUTBOX-03: Conflicting message content
 
-Purpose:
-Verify that a durable pending message is published to the upstream MQTT
-client and becomes `broker_acknowledged` when the QoS 1 acknowledgement
-is confirmed.
-
-Configuration:
-- One valid `pending` SQLite outbox record
-- MQTT QoS 1
-- Fake MQTT client returning successful publication
-- MQTT message identifier: 27
-- No NetEm impairment
-
-Expected:
-- The selected row changes from `pending` to `in_flight`.
-- `attempt_count` increases by one.
-- The stored topic and payload are passed to the MQTT client.
-- QoS is 1.
-- Retain is disabled.
-- A successful acknowledgement changes the row to
-  `broker_acknowledged`.
-- `acknowledged_at` is populated.
-
-Initial actual result:
-- Failed before MQTT publication logic was reached.
-- `get_next_pending_message()` raised
-  `sqlite3.OperationalError: near "FROM": syntax error`.
-- Cause: trailing comma after `attempt_count` in the SELECT statement.
-
-Corrective action:
-- Removed the trailing comma from the query.
-- Corrected the SQL string literal for the pending state.
-
-Final actual result:
-- Passed after correcting the repository implementation.
-- The message changed from `pending` to `in_flight` before publication.
-- `attempt_count` increased to 1.
-- The fake MQTT client received the expected topic and payload at QoS 1.
-- Successful acknowledgement changed the durable state to
-  `broker_acknowledged`.
-- `acknowledged_at` was populated.
-
-Evidence:
-- `tests/test_upstream.py::test_successful_publish_becomes_broker_acknowledged`
-- Initial pytest output
-- Corrected `repository.py`
-
-TMA03 objectives:
-- DO2
-- Supports later DO3 and EO1
-
-
-## UP-02: Immediate upstream publication failure
-
-Purpose:
-Verify that an upstream publication that cannot be successfully queued
-does not become `broker_acknowledged`.
-
-Configuration:
-- One valid `pending` SQLite outbox record
-- MQTT QoS 1
-- Fake MQTT client returning `MQTT_ERR_NO_CONN`
-- No NetEm impairment
-
-Expected:
-- The row first changes to `in_flight`.
-- `attempt_count` increases.
-- The failed publication changes the row to `retry_wait`.
-- No broker acknowledgement timestamp is recorded.
-
-Initial actual result:
-- Failed before MQTT publication logic was reached because of the shared
-  SQL syntax error in `get_next_pending_message()`.
-
-Corrective action:
-- Corrected the SELECT statement.
-
-Final actual result:
-- Passed after correcting the repository implementation.
-- The message changed to `in_flight` before the publication attempt.
-- The simulated MQTT publication failure resulted in the durable state
-  changing to `retry_wait`.
-- The message was not incorrectly marked as `broker_acknowledged`.
-
-Evidence:
-- `tests/test_upstream.py::test_publish_error_moves_message_to_retry_wait`
-- Initial pytest output
-- Corrected `repository.py`
-
-TMA03 objectives:
-- DO2
-- Prerequisite for DO3
-
-
-## UP-03: Upstream acknowledgement timeout
-
-Purpose:
-Verify that an uncertain QoS 1 publication is retained for later recovery
-rather than being incorrectly marked as successfully acknowledged.
-
-Configuration:
-- One valid `pending` SQLite outbox record
-- MQTT QoS 1
-- Publication accepted by the fake client
-- Broker acknowledgement not confirmed before timeout
-- No NetEm impairment
-
-Expected:
-- The row changes to `in_flight` when the attempt begins.
-- `attempt_count` increases.
-- Failure to confirm the acknowledgement changes the row to `retry_wait`.
-- The message remains durably available for a later recovery attempt.
-
-Initial actual result:
-- Failed before acknowledgement handling was reached because of the
-  shared SQL syntax error in `get_next_pending_message()`.
-
-Corrective action:
-- Corrected the SELECT statement.
-
-Final actual result:
-- Passed after correcting the repository implementation.
-- Failure to confirm the QoS 1 acknowledgement resulted in the message
-  changing from `in_flight` to `retry_wait`.
-- The message remained durably available for later recovery rather than
-  being incorrectly recorded as successfully acknowledged.
-
-Evidence:
-- `tests/test_upstream.py::test_acknowledgement_timeout_moves_message_to_retry_wait`
-- Initial pytest output
-- Corrected `repository.py`
-
-TMA03 objectives:
-- DO2
-- Prerequisite for DO3
-- Foundation for EO2 acknowledgement-uncertainty evaluation
-
-
-## UP-04: Empty pending outbox
-
-Purpose:
-Verify that the baseline upstream worker handles an empty pending queue
-without attempting an MQTT publication.
-
-Configuration:
-- SQLite database containing no `pending` outbox records
-- Fake MQTT client
-- No NetEm impairment
-
-Expected:
-- No MQTT publication is attempted.
-- No database row is modified.
-- The result is `NO_PENDING`.
-- The operation exits normally.
-
-Initial actual result:
-- Failed during pending-record selection because of the shared SQL syntax
-  error in `get_next_pending_message()`.
-
-Corrective action:
-- Corrected the SELECT statement.
-
-Final actual result:
-- Passed after adding explicit handling for `fetchone()` returning
-  `None`.
-- No MQTT publication was attempted.
-- No outbox state was modified.
-- The operation returned `NO_PENDING` normally.
-
-Evidence:
-- `tests/test_upstream.py::test_no_pending_message_returns_without_publishing`
-- Initial pytest output
-- Corrected `repository.py`
-
-TMA03 objectives:
-- Supporting implementation for DO2
-
-## UP-05: Real upstream Mosquitto publication
-
-Purpose:
-Verify the baseline upstream publication path using a real MQTT broker
-and an independent subscriber.
-
-Configuration:
-- Upstream Mosquitto broker: `localhost:1884`
-- Gateway client: `edge-gateway-upstream`
-- Subscriber topic filter: `telemetry/#`
-- MQTT QoS: 1
-- Source topic: `telemetry/sensor-001`
-- Message identifier: `msg-smoke-002`
-- Payload: `{"temperature_c":18.5}`
-- No NetEm impairment
-
-Expected:
-- Gateway connects to the upstream broker.
-- Pending telemetry is published using QoS 1.
-- Broker returns PUBACK.
-- Independent subscriber receives the expected topic and payload.
-- SQLite state changes to `broker_acknowledged`.
-- `attempt_count` becomes 1.
-- `last_attempt_at` and `acknowledged_at` are populated.
-
-Actual:
-Passed.
-
-Observed:
-- Mosquitto accepted the `edge-gateway-upstream` connection.
-- Broker received a QoS 1 PUBLISH for `telemetry/sensor-001`.
-- Broker sent PUBACK for MQTT message identifier 1.
-- Independent subscriber received:
-  `telemetry/sensor-001 {"temperature_c":18.5}`
-
-- Gateway reported:
-  `outcome=broker_acknowledged row_id=2 message_id=msg-smoke-002 mid=1`
-
-- SQLite contained:
-  `2|msg-smoke-002|broker_acknowledged|1|...|...`
-
-Conclusion:
-- The baseline upstream publication path operates correctly under normal
-  local network conditions.
-- The result demonstrates broker acknowledgement and subscriber receipt
-  for this smoke test.
-- It does not yet constitute formal collector-based delivery-completeness
-  evidence.
-
-TMA03 objectives:
-- DO2
-- Supports DO3
-- Foundation for EO1
-
-## EVAL-DB-01: Evaluation database initialisation
-
-Purpose:
-Verify that the collector evidence database initialises independently
-from the gateway operational database.
-
-Configuration:
-- Fresh `evaluation.db`
-- `evaluation_schema.sql`
-- No MQTT broker required
-- No NetEm impairment
-
-Expected:
-- Evaluation schema is executed.
-- SQLite WAL mode is active.
-- Schema version is 1.
-- `collector_observations` exists.
-- `collector_rejections` exists.
-- No gateway outbox state is required.
-
-Actual:
-Passed.
-
-Evidence:
-- Passing evaluation database test.
-- `evaluation_schema.sql`.
-- `src/database.py`.
-
-TMA03 objectives:
-- Foundation for EO1
-- Foundation for EO2
-
-## COL-01: Valid collector observation persistence
-
-Purpose:
-Verify that a valid upstream telemetry observation can be stored as
-independent evaluation evidence.
-
-Expected:
-- One collector observation is created.
-- `run_id` is retained.
-- Stable telemetry identity is retained.
-- Receipt timestamp is populated.
-- Payload is stored canonically.
-- Payload hash is calculated consistently.
-- Raw MQTT evidence is retained.
-
-Actual:
-Passed.
-
-Evidence:
-- Passing collector repository tests.
-- `collector_observations` inspection.
-- `src/repository.py`.
-
-TMA03 objectives:
-- EO1
-
-## COL-02: Repeated collector observations are preserved
-
-Purpose:
-Verify that repeated observations of the same stable telemetry identity
-are retained rather than deduplicated by the evaluation database.
-
-Configuration:
-- One valid telemetry identity
-- Same message recorded twice
-- Same evaluation run
-- No NetEm impairment
-
-Expected:
-- Two collector rows are created.
-- Both rows retain the same stable message identity.
-- Both observations retain the same canonical payload hash.
-- No uniqueness constraint suppresses the second arrival.
-
-Actual:
-Passed.
-
-Problems found:
-- The first test run referenced an undefined test helper.
-- After correcting the test fixture, collector persistence attempted to
-  read a non-existent `TelemetryMessage.payload_hash` attribute.
-
-Corrective action:
-- Added/reused valid telemetry test helpers.
-- Kept `payload_hash` as derived evidence.
-- Calculated the hash using the existing canonical payload-hash helper.
-- Stored raw MQTT evidence as bytes.
-
-Evidence:
-- `test_collector_preserves_repeated_observations`
-- Passing full automated test suite.
-- Two rows in `collector_observations`.
-
-TMA03 objectives:
-- Foundation for EO2
-
-## COL-02: Repeated collector observations are preserved
-
-Purpose:
-Verify that repeated observations of the same stable telemetry identity
-are retained rather than deduplicated by the evaluation database.
-
-Configuration:
-- One valid telemetry identity
-- Same message recorded twice
-- Same evaluation run
-- No NetEm impairment
-
-Expected:
-- Two collector rows are created.
-- Both rows retain the same stable message identity.
-- Both observations retain the same canonical payload hash.
-- No uniqueness constraint suppresses the second arrival.
-
-Actual:
-Passed.
-
-Problems found:
-- The first test run referenced an undefined test helper.
-- After correcting the test fixture, collector persistence attempted to
-  read a non-existent `TelemetryMessage.payload_hash` attribute.
-
-Corrective action:
-- Added/reused valid telemetry test helpers.
-- Kept `payload_hash` as derived evidence.
-- Calculated the hash using the existing canonical payload-hash helper.
-- Stored raw MQTT evidence as bytes.
-
-Evidence:
-- `test_collector_preserves_repeated_observations`
-- Passing full automated test suite.
-- Two rows in `collector_observations`.
-
-TMA03 objectives:
-- Foundation for EO2
-
-## COL-LIVE-01: Real upstream collector subscription
-
-Purpose:
-Verify that the evaluation collector can connect to the real upstream
-Mosquitto broker and establish its telemetry subscription.
-
-Configuration:
-- Upstream broker: `localhost:1884`
-- Collector client: `edge-gateway-evaluation-collector`
-- Run ID: `baseline-smoke-001`
-- Topic filter: `telemetry/#`
-- QoS: 1
-- No NetEm impairment
-
-Expected:
-- Collector connects successfully.
-- Broker accepts the client.
-- Collector subscribes to `telemetry/#`.
-- Broker returns SUBACK.
-- Collector remains connected awaiting observations.
-
-Actual:
-Passed.
-
-Observed:
-- Mosquitto accepted the collector connection.
-- Subscription to `telemetry/#` at QoS 1 was accepted.
-- Collector logged successful subscription under
-  `baseline-smoke-001`.
-
-Evidence:
-- Mosquitto broker log.
-- Collector runtime log.
-
-TMA03 objectives:
-- Foundation for EO1
-
-## E2E-01: Baseline publisher-to-collector path
-
-Purpose:
-Verify the complete baseline telemetry path from local publication to
-independent collector evidence.
-
-Configuration:
+**Purpose:** Confirm that the same idempotency key with a different payload hash is treated as a data-integrity anomaly.
+
+**Expected:** the original row remains unchanged, no second row is created and the outcome is `conflict`.
+
+**Actual:** Passed.
+
+**Evidence:** conflicting-payload repository test.
+
+**Objectives:** DO4
+
+## Upstream publication
+
+### UP-01: Successful upstream QoS 1 publication
+
+**Purpose:** Confirm the normal durable state transition when the upstream broker acknowledges a publication.
+
+**Expected:** `pending → in_flight → broker_acknowledged`, attempt count increases and `acknowledged_at` is populated.
+
+**Actual:** Passed.
+
+**Evidence:** `test_successful_publish_becomes_broker_acknowledged`.
+
+**Objectives:** DO2, foundation for EO1
+
+### UP-02: Immediate upstream publication failure
+
+**Purpose:** Confirm that an immediate MQTT publication failure does not become `broker_acknowledged`.
+
+**Expected:** the record moves to `retry_wait` and remains durably available.
+
+**Actual:** Passed.
+
+**Evidence:** `test_publish_error_moves_message_to_retry_wait`.
+
+**Objectives:** DO2, prerequisite for DO3
+
+### UP-03: Upstream acknowledgement timeout
+
+**Purpose:** Confirm that an uncertain QoS 1 publication remains available for later recovery.
+
+**Expected:** the record moves from `in_flight` to `retry_wait` when acknowledgement is not confirmed.
+
+**Actual:** Passed.
+
+**Evidence:** `test_acknowledgement_timeout_moves_message_to_retry_wait`.
+
+**Objectives:** DO2, prerequisite for DO3, foundation for EO2
+
+### UP-04: Empty pending outbox
+
+**Purpose:** Confirm that no publication is attempted when no `pending` record exists.
+
+**Expected:** no state changes and the result is `NO_PENDING`.
+
+**Actual:** Passed.
+
+**Objectives:** DO2
+
+### UP-05: Real upstream Mosquitto publication
+
+**Purpose:** Confirm baseline publication to a real upstream broker before controlled recovery is added.
+
+**Configuration:** `localhost:1884`, QoS 1, topic `telemetry/sensor-001`, no NetEm impairment.
+
+**Expected:** broker receives the publication, returns `PUBACK`, and the gateway records `broker_acknowledged`.
+
+**Actual:** Passed. The independent subscriber also received the expected publication.
+
+**Conclusion:** Baseline upstream publication works under normal local conditions. This test does not measure resilience under intermittent connectivity.
+
+**Objectives:** DO2, prerequisite for DO3, foundation for EO1
+
+## Evaluation collector
+
+### EVAL-DB-01: Evaluation database initialisation
+
+**Purpose:** Confirm that evaluation evidence is stored separately from gateway operational state.
+
+**Expected:** `evaluation.db` initialises with WAL mode and the collector tables without requiring the gateway outbox database.
+
+**Actual:** Passed.
+
+**Objectives:** foundation for EO1 and EO2
+
+### COL-01: Valid collector observation persistence
+
+**Purpose:** Confirm that a valid upstream observation is stored with run identifier, receipt timestamp, telemetry identity and payload hash.
+
+**Actual:** Passed.
+
+**Evidence:** collector repository tests and `collector_observations` inspection.
+
+**Objectives:** EO1 foundation
+
+### COL-02: Repeated collector observations are preserved
+
+**Purpose:** Confirm that repeated observations of the same telemetry identity remain visible for later duplicate-control measurement.
+
+**Expected:** two arrivals create two collector rows with the same stable identity and payload hash.
+
+**Actual:** Passed.
+
+**Evidence:** `test_collector_preserves_repeated_observations`.
+
+**Objectives:** EO2 foundation
+
+### COL-LIVE-01: Real upstream collector subscription
+
+**Purpose:** Confirm that the evaluation collector can connect to the real upstream broker and subscribe to the telemetry topic.
+
+**Configuration:** broker `localhost:1884`, topic `telemetry/#`, QoS 1, run `baseline-smoke-001`, no NetEm impairment.
+
+**Actual:** Passed. Mosquitto accepted the collector connection and subscription.
+
+**Objectives:** EO1 foundation
+
+## End-to-end baseline evidence
+
+### E2E-01: Single-message publisher-to-collector smoke test
+
+**Purpose:** Confirm the complete baseline path from local publication to independent collector observation.
+
+**Configuration:** message `collector-smoke-001`, local broker `localhost:1883`, upstream broker `localhost:1884`, QoS 1, no NetEm impairment.
+
+**Expected:** the gateway stores the message, publishes it upstream, records broker acknowledgement, and the collector records the same telemetry identity independently.
+
+**Actual:** Passed.
+
+**Observed:** the message moved from `pending` to `broker_acknowledged`, and `evaluation.db` contained the matching collector observation under run `baseline-smoke-001`.
+
+**Conclusion:** Broker acknowledgement and collector observation are independently represented.
+
+**Objectives:** EO1 and EO2 foundation
+
+### E2E-02: Known-set baseline reconciliation
+
+**Purpose:** Confirm that a known set of unique messages can be reconciled across publisher, gateway and collector evidence.
+
+**Configuration:**
+- Run: `baseline-050-001`
+- Generated messages: 50
 - Local broker: `localhost:1883`
 - Upstream broker: `localhost:1884`
-- Collector run: `smoke-001`
-- Topic: `telemetry/sensor-001`
-- Message: `collector-smoke-001`
-- QoS: 1
+- MQTT QoS: 1
 - No NetEm impairment
+- One publisher session
+- Source sequences: 1 to 50
 
-Expected:
-- Local gateway accepts and durably stores the telemetry.
-- Initial gateway state is `pending`.
-- Baseline upstream publisher forwards the full telemetry envelope.
-- Upstream broker acknowledges the QoS 1 publication.
-- Gateway state becomes `broker_acknowledged`.
-- Evaluation collector observes the same stable message identity.
-- One matching record appears in `evaluation.db`.
+**Expected:** all 50 identities appear in publisher and gateway evidence, are acknowledged by the upstream broker and are independently observed by the collector. Payload hashes should match and duplicate observations should not increase delivery completeness above 100%.
 
-Actual:
-Passed
+**Actual:** Passed.
 
-Observed:
+**Results:**
+- Generated unique messages: 50
+- Gateway present: 50
+- Gateway `broker_acknowledged`: 50
+- Collector observations: 50
+- Unique expected messages observed: 50
+- Missing gateway records: 0
+- Missing collector observations: 0
+- Duplicate collector observations: 0
+- Payload conflicts: 0
+- Unexpected collector identities: 0
+- Delivery completeness: 100.0%
 
-- Local gateway accepted `collector-smoke-001`.
-- `gateway.db` initially stored the message as:
+**Evidence:**
+- `evidence/baseline-050-001/publisher_manifest.csv`
+- `evidence/baseline-050-001/reconciliation.csv`
+- `evidence/baseline-050-001/summary.json`
+- `gateway.db`
+- `evaluation.db`
+- Mosquitto, gateway and collector logs
 
-  `3|collector-smoke-001|2026-08-09T12:00:00.000000Z|pending`
+**Conclusion:** The baseline measurement path works under normal, unimpaired conditions. The result validates the method used to calculate delivery completeness but does not demonstrate resilience under intermittent connectivity. Formal controlled-recovery and impairment-based evaluation remain outstanding.
 
-- The upstream publisher connected successfully to `localhost:1884`.
-- The publisher forwarded `collector-smoke-001` using MQTT QoS 1.
-- The upstream broker received the publication and returned `PUBACK`.
-- Gateway publication result was:
-
-  `outcome=broker_acknowledged row_id=3
-  message_id=collector-smoke-001 mid=1`
-
-- Final gateway state was:
-
-  `3|collector-smoke-001|broker_acknowledged|1|...`
-
-- The upstream broker forwarded the publication to `edge-gateway-evaluation-collector`.
-- The broker received the collector's QoS 1 `PUBACK`.
-- `evaluation.db` contained:
-
-  `baseline-smoke-001|collector-smoke-001|sensor-001|`
-  `session-collector-001|1|...|`
-  `41bffd2bb7d92e8839969485a2cff7d87b1297fd660e5fb28e6a8c82a9f1db3e`
-
-Conclusion:
-
-- The publisher-to-collector path operates correctly under normal local network conditions.
-- Broker acknowledgement and downstream collector observation are independently represented.
-- The message identity is preserved across the complete path.
-- The collector now provides the independent evidence required for later
-  delivery-completeness calculations.
-- This smoke test validates the measurement path but is not itself a good impairment-based evaluation.
-
-Evidence:
-
-- Gateway ingestion log.
-- `gateway.db` state before publication.
-- Upstream publisher log.
-- Mosquitto broker log.
-- `gateway.db` state after acknowledgement.
-- `evaluation.db` collector observation.
-- Run identifier `baseline-smoke-001`.
-
-TMA03 objectives:
-
-- Foundation for EO1
-- Foundation for EO2
-- Supports later DO3 recovery evaluation
+**Objectives:** EO1 measurement foundation, EO2 measurement foundation
