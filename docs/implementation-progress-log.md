@@ -191,7 +191,7 @@ Completed:
 - Added shared test helpers to reduce repeated test data.
 - Completed a one-message publisher-to-collector smoke test.
 - Completed known-set baseline run `baseline-050-001` using 50 unique messages.
-- Produced a publisher manifest and reconciled publisher, gateway and collector evidence.
+- Produced a publisher output and reconciled publisher, gateway and collector evidence.
 - Calculated baseline delivery completeness from unique expected identities.
 
 Problems and corrections:
@@ -220,7 +220,7 @@ Outcome:
 - The 100.0% result is a baseline only. It does not demonstrate resilience under intermittent connectivity.
 
 Evidence:
-- `evidence/baseline-050-001/publisher_manifest.csv`
+- `evidence/baseline-050-001/publisher_output.csv`
 - `evidence/baseline-050-001/reconciliation.csv`
 - `evidence/baseline-050-001/summary.json`
 - `gateway.db`

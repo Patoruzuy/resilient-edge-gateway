@@ -260,7 +260,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 - Delivery completeness: 100.0%
 
 **Evidence:**
-- `evidence/baseline-050-001/publisher_manifest.csv`
+- `evidence/baseline-050-001/publisher_output.csv`
 - `evidence/baseline-050-001/reconciliation.csv`
 - `evidence/baseline-050-001/summary.json`
 - `gateway.db`
