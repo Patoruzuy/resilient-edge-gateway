@@ -1,6 +1,6 @@
 from pathlib import Path
-import json
 
+from tests.helpers import valid_payload
 from src.database import open_database
 from src.ingestion import (
     IngestionOutcome,
@@ -12,28 +12,9 @@ SCHEMA_PATH = (
     Path(__file__).resolve().parent.parent / "schema.sql"
 )
 
-
-def valid_payload():
-    return json.dumps(
-    {
-        "message_id": "msg-000001",
-        "device_id": "sensor-001",
-        "publisher_session_id": "session-001",
-        "source_sequence": 1,
-        "source_timestamp": "2026-07-15T12:00:00+01:00",
-        "priority": 0,
-        "payload": {
-            "temperature_c": 18.5,
-            "humidity_percent": 71,
-        },
-    }).encode("utf-8")
-
-
 def test_valid_mqtt_publication_is_persisted(tmp_path):
-    connection = open_database(
-        tmp_path / "gateway.db",
-        SCHEMA_PATH,
-    )
+    database_path = tmp_path / "gateway.db"
+    connection = open_database(database_path, SCHEMA_PATH)
 
     try:
         result = process_mqtt_publication(
@@ -43,7 +24,6 @@ def test_valid_mqtt_publication_is_persisted(tmp_path):
         )
 
         assert result.outcome == IngestionOutcome.INSERTED
-
         row = connection.execute(
             """
             SELECT message_id, topic, delivery_state
@@ -60,10 +40,8 @@ def test_valid_mqtt_publication_is_persisted(tmp_path):
 
 
 def test_malformed_json_is_rejected(tmp_path):
-    connection = open_database(
-        tmp_path / "gateway.db",
-        SCHEMA_PATH,
-    )
+    database_path = tmp_path / "gateway.db"
+    connection = open_database(database_path, SCHEMA_PATH)
 
     try:
         result = process_mqtt_publication(
@@ -86,10 +64,8 @@ def test_malformed_json_is_rejected(tmp_path):
 
 
 def test_identical_publication_is_classified_as_duplicate(tmp_path):
-    connection = open_database(
-        tmp_path / "gateway.db",
-        SCHEMA_PATH,
-    )
+    database_path = tmp_path / "gateway.db"
+    connection = open_database(database_path, SCHEMA_PATH)
 
     try:
         first = process_mqtt_publication(

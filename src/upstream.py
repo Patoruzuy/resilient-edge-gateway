@@ -5,6 +5,7 @@ The module selects one durable pending outbox record, changes it to
 in_flight, publishes it to the upstream broker at QoS 1 and stores the
 resulting durable state.
 """
+import json
 import logging
 import sqlite3
 import threading
@@ -16,6 +17,7 @@ import paho.mqtt.client as mqtt
 
 from src.config import UpstreamConfig
 from src.repository import (
+    PendingOutboxMessage,
     get_next_pending_message,
     mark_broker_acknowledged,
     mark_in_flight,
@@ -76,7 +78,7 @@ def publish_one_pending(
     try:
         message_info = client.publish(
             topic=pending.topic,
-            payload=pending.payload,
+            payload=serialise_upstream_message(pending),
             qos=qos,
             retain=False,
         )
@@ -197,6 +199,39 @@ def publish_one_pending(
         row_id=pending.row_id,
         message_id=pending.message_id,
         mqtt_mid=mqtt_mid,
+    )
+
+def serialise_upstream_message(
+    pending: PendingOutboxMessage,
+) -> str:
+    """
+    Reconstruct the telemetry message for upstream publication.
+
+    The SQLite outbox stores message identity separately from the
+    payload. Creating the envelope keeps the identity information
+    that is required by the evaluation collector.
+    """
+
+    payload = json.loads(pending.payload)
+
+    envelope = {
+        "message_id": pending.message_id,
+        "device_id": pending.device_id,
+        "publisher_session_id": (
+            pending.publisher_session_id
+        ),
+        "source_sequence": pending.source_sequence,
+        "source_timestamp": pending.source_timestamp,
+        "priority": pending.priority,
+        "payload": payload,
+    }
+
+    return json.dumps(
+        envelope,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
     )
 
 

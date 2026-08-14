@@ -11,33 +11,24 @@ if str(ROOT) not in sys.path:
 
 from src.config import UpstreamConfig
 from src.database import open_database
-from src.upstream import (
-    UpstreamMqttConnection,
-    publish_one_pending,
-)
+from src.upstream import UpstreamMqttConnection, publish_one_pending
 
 
 def main() -> None:
     logging.basicConfig(
         level=logging.INFO,
-        format=(
-            "%(asctime)s %(levelname)s "
-            "%(name)s %(message)s"
-        ),
+        format=("%(asctime)s %(levelname)s %(name)s %(message)s"),
     )
-
     config = UpstreamConfig()
 
     connection = open_database(
         database_path=config.database_path,
         schema_path=config.schema_path,
     )
-
     upstream = UpstreamMqttConnection(config)
 
     try:
         upstream.connect()
-
         result = publish_one_pending(
             connection,
             upstream.client,

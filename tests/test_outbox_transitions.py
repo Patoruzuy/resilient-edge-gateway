@@ -13,15 +13,13 @@ from src.repository import (
 from src.validation import parse_telemetry_message
 
 
-SCHEMA_PATH = (
-    Path(__file__).resolve().parent.parent / "schema.sql"
-)
+SCHEMA_PATH = Path(__file__).resolve().parent.parent / "schema.sql"
 
 
 def create_pending_message(connection):
     message = parse_telemetry_message(
         {
-            "message_id": "msg-upstream-001",
+            "message_id": "msg-000001",
             "device_id": "sensor-001",
             "publisher_session_id": "session-001",
             "source_sequence": 1,
@@ -33,22 +31,15 @@ def create_pending_message(connection):
         }
     )
 
-    return store_message(
-        connection,
-        message,
-        "telemetry/sensor-001",
-    )
+    return store_message(connection, message, "telemetry/sensor-001")
 
 
 def test_pending_message_can_be_marked_in_flight(tmp_path):
-    connection = open_database(
-        tmp_path / "gateway.db",
-        SCHEMA_PATH,
-    )
+    database_path = tmp_path / "gateway.db"
+    connection = open_database(database_path, SCHEMA_PATH)
 
     try:
         stored = create_pending_message(connection)
-
         pending = get_next_pending_message(connection)
 
         assert pending is not None
@@ -74,10 +65,8 @@ def test_pending_message_can_be_marked_in_flight(tmp_path):
 
 
 def test_in_flight_message_can_be_acknowledged(tmp_path):
-    connection = open_database(
-        tmp_path / "gateway.db",
-        SCHEMA_PATH,
-    )
+    database_path = tmp_path / "gateway.db"
+    connection = open_database(database_path, SCHEMA_PATH)
 
     try:
         stored = create_pending_message(connection)
@@ -102,10 +91,8 @@ def test_in_flight_message_can_be_acknowledged(tmp_path):
 
 
 def test_in_flight_message_can_move_to_retry_wait(tmp_path):
-    connection = open_database(
-        tmp_path / "gateway.db",
-        SCHEMA_PATH,
-    )
+    database_path = tmp_path / "gateway.db"
+    connection = open_database(database_path, SCHEMA_PATH)
 
     try:
         stored = create_pending_message(connection)
@@ -129,19 +116,12 @@ def test_in_flight_message_can_move_to_retry_wait(tmp_path):
 
 
 def test_invalid_transition_is_rejected(tmp_path):
-    connection = open_database(
-        tmp_path / "gateway.db",
-        SCHEMA_PATH,
-    )
+    database_path = tmp_path / "gateway.db"
+    connection = open_database(database_path, SCHEMA_PATH)
 
     try:
         stored = create_pending_message(connection)
-
         with pytest.raises(RuntimeError):
-            mark_broker_acknowledged(
-                connection,
-                stored.row_id,
-            )
-
+            mark_broker_acknowledged(connection, stored.row_id)
     finally:
         connection.close()

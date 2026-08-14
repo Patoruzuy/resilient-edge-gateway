@@ -1,136 +1,45 @@
-# Objective Traceability Matrix
+# Objective traceability matrix
 
-Created: 20/07/2026
-Last updated: 09/08/2026
+Created: 20/07/2026  
+Last updated: 14/08/2026
 
-This matrix links the development and evaluation objectives defined in
-TMA03 to their implementation, planned evidence and current status.
+This matrix links the TMA03 development and evaluation objectives to the current implementation and evidence.
 
-| Objective | Implementation | Planned evidence | Current status |
-|---|---|---|---|
-| DO1 | Telemetry message contract, validation, timestamp normalisation, canonical payload handling and local MQTT ingestion | Passing validation and ingestion tests, malformed-message rejection and local Mosquitto testing | Implemented |
-| DO2 | SQLite WAL outbox, durability boundary, persistent delivery state and baseline upstream state transitions | Schema and WAL verification, persistence tests, database reopening tests, upstream transition tests and real QoS 1 Mosquitto smoke test | Implemented |
-| DO3 | Link-stability detection and bounded backlog replay | Recovery logs, scheduler tests and outage/reconnection integration tests | Not started |
-| DO4 | Composite idempotency key, SQLite uniqueness constraints and canonical payload-hash comparison | Duplicate retransmission tests, conflicting-payload tests and classification evidence | Implemented |
-
-| EO1 | Publisher manifest and evaluation collector manifest | Delivery-completeness calculation using publisher and collector evidence | Not started |
-| EO2 | Duplicate observations across gateway and collector evidence | Duplicate counts, retransmission scenarios and duplicate-control results | Not started |
-| EO3 | Recovery timing and backlog-state timestamps | Backlog drain-time results under defined outage and recovery scenarios | Not started |
-| EO4 | SQLite database and transaction measurements | Database-size records, transaction counts and storage-growth measurements | Not started |
-| EO5 | Linux traffic control and NetEm scenario configuration | Recorded impairment commands, parameter sets and repeated trials | Exploratory only |
+| Objective | Current implementation or evidence | Status |
+|---|---|---|
+| DO1 | Telemetry contract, validation, UTC timestamp normalisation and local MQTT ingestion are implemented and tested. | Implemented |
+| DO2 | SQLite WAL outbox, local persistence, durable delivery states and baseline upstream QoS 1 publication are implemented and tested. | Implemented |
+| DO3 | Controlled recovery still requires link-stability detection, retry eligibility, bounded backlog replay and replay interruption handling. | Not started |
+| DO4 | Composite idempotency key, uniqueness constraints and canonical payload-hash comparison classify expected duplicates and conflicting content. | Implemented |
+| EO1 | Run-specific publisher and collector evidence can now be reconciled. Baseline run `baseline-050-001` observed 50/50 expected messages with 100.0% delivery completeness. Formal controlled-recovery trials remain outstanding. | In progress |
+| EO2 | Gateway duplicate classification is implemented and the collector preserves repeated observations. Deliberate retransmission and recovery scenarios are still required. | In progress |
+| EO3 | Recovery timing fields exist, but backlog drain time has not yet been measured during controlled recovery. | Not started |
+| EO4 | SQLite persistence is operational, but formal storage behaviour measurements during longer outages have not yet been collected. | Not started |
+| EO5 | Linux `tc` and NetEm have been checked during exploratory work. Formal impairment-based evaluation has not yet begun. | Exploratory only |
 
 ## Status definitions
 
-- **Not started:** No implementation or experimental work has begun.
-- **In progress:** Design or implementation exists, but the required tests and evidence are not complete.
-- **Exploratory only:** Preliminary work has validated the method or tooling, but formal evaluation has not begun.
-- **Implemented:** The feature is present and its focused tests pass.
-- **Evaluated:** Formal experimental evidence has been collected and analysed.
-- **Complete:** The objective has been implemented, evaluated where applicable, documented and supported by final evidence.
+- **Not started:** the planned feature or formal evaluation has not begun.
+- **In progress:** part of the implementation or measurement method exists, but the required evaluation is incomplete.
+- **Exploratory only:** the method or tooling has been checked, but it has not yet been used for formal evaluation.
+- **Implemented:** the feature is present and its focused tests pass.
+- **Evaluated:** formal experimental evidence has been collected and analysed.
+- **Complete:** implementation, evaluation and final evidence are complete where required.
 
-## Current implementation notes
+## Current position
 
-### DO1
+### Development objectives
 
-The telemetry message contract has been defined using:
+DO1, DO2 and DO4 are implemented. The local-first edge gateway can validate telemetry, commit accepted messages to the SQLite WAL outbox, control duplicate insertion and publish selected records to the upstream broker.
 
-- `message_id`
-- `device_id`
-- `publisher_session_id`
-- `source_sequence`
-- `source_timestamp`
-- `priority`
-- `payload`
+DO3 remains the main outstanding development objective. The next recovery work must introduce link-stability checks and bounded backlog replay rather than simply draining the stored backlog after connectivity returns.
 
-The implementation validates required fields, normalises timestamps to
-UTC and uses canonical JSON representation for deterministic payload
-handling.
+### Evaluation objectives
 
-The local MQTT ingestion path also connects the Mosquitto subscription
-callback to telemetry validation and durable SQLite persistence.
+EO1 now has a working measurement method. During baseline run `baseline-050-001`, 50 unique messages were generated, all 50 were present in the gateway, all 50 reached `broker_acknowledged`, and all 50 were independently observed by the evaluation collector. No missing messages, duplicate observations or payload conflicts were recorded. Baseline delivery completeness was therefore 100.0%.
 
-DO1 is currently classified as **Implemented** because the message
-contract, validation pipeline and local ingestion behaviour are present
-and have been tested.
+This baseline is not treated as evidence of resilience under intermittent connectivity. EO1 remains in progress until the same measurement approach is applied during controlled recovery and impairment-based evaluation.
 
-### DO2
+EO2 also remains in progress. Duplicate control already prevents repeated telemetry from creating additional outbox rows, and the collector can retain repeated arrivals. The next slice will add persistent duplicate measurements and deliberate retransmission/conflict scenarios.
 
-The gateway uses an SQLite Write-Ahead Logging (WAL) outbox as the
-durability boundary for accepted telemetry.
-
-The durable state model currently supports:
-
-`pending → in_flight → broker_acknowledged`
-
-and:
-
-`in_flight → retry_wait`
-
-A real Mosquitto smoke test has also demonstrated successful QoS 1
-publication to the upstream broker and durable recording of the broker
-acknowledgement.
-
-DO2 is therefore classified as **Implemented**. Formal storage-behaviour
-measurement remains part of EO4 rather than DO2 implementation.
-
-### DO3
-
-Upstream publication provides the transport and durable state
-transitions required by controlled recovery, but controlled recovery
-itself has not yet been implemented.
-
-Outstanding DO3 work includes:
-
-- link-stability detection;
-- health publications;
-- retry eligibility;
-- bounded backlog replay;
-- replay interruption handling;
-- ordering and limited priority behaviour.
-
-DO3 therefore remains **Not started**.
-
-### DO4
-
-The idempotency key is:
-
-`device_id + publisher_session_id + source_sequence`
-
-SQLite uniqueness constraints prevent a second durable row from being
-created for the same identity. Canonical payload hashing enables the
-gateway to distinguish between an expected retransmission and conflicting
-content.
-
-DO4 is classified as **Implemented** once the duplicate and conflicting
-payload tests are confirmed as passing.
-
---------------------------------------------------------------------------------
-
-### EO1
-
-Baseline upstream publication has established the path to the upstream
-broker, and an independent `mosquitto_sub` client has confirmed receipt
-during smoke testing.
-
-However, this diagnostic subscriber is not the formal evaluation
-collector. EO1 remains **Not started** until publisher and collector
-manifests are generated and used to calculate delivery completeness.
-
-### EO2
-
-Repository-level duplicate classification exists as part of DO4.
-However, formal duplicate-control evaluation across gateway recovery and
-collector observations has not begun.
-
-EO2 therefore remains **Not started**.
-
-### EO5
-
-Exploratory NetEm work has confirmed that delay and packet loss can be
-introduced.
-
-Formal impairment-based evaluation has not yet begun because the
-publisher-to-collector measurement path and controlled recovery
-implementation remain outstanding.
-
-EO5 therefore remains **Exploratory only**.
+EO3 and EO4 depend on the controlled recovery and outage scenarios that have not yet been run. EO5 remains exploratory because NetEm has been validated as a tool, but the formal repeated impairment scenarios are still outstanding.

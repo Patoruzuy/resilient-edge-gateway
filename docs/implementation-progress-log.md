@@ -1,22 +1,26 @@
 # Implementation progress log
 
+This log records the main implementation changes, problems and evidence for the local-first edge gateway. Detailed test results are kept in the test scenario register so that this file remains concise.
+
 ## 25/07/2026
 
+Branch:
+- Initial database work
+
 Completed:
-- Created SQLite database initialisation.
-- Enabled WAL mode.
-- Added outbox uniqueness constraint.
+- Created SQLite database initialisation for the gateway outbox.
+- Enabled SQLite Write-Ahead Logging (WAL).
+- Added the uniqueness constraint used by the idempotency key.
 
-Problems:
-- Duplicate inserts raised an unhandled exception.
+Problem:
+- Duplicate inserts were not yet classified cleanly.
 
-Action:
-- Add explicit duplicate classification in the repository layer.
+Outcome:
+- The basic local persistence structure was created, but duplicate control still needed repository-level handling.
 
 TMA03 objectives:
 - DO2
 - DO4
-
 
 ## 01/08/2026
 
@@ -27,41 +31,29 @@ Commit:
 - `feat(contract): define telemetry message validation and hashing`
 
 Completed:
-- Defined the telemetry message structure using the fields specified in TMA03.
-- Implemented the `TelemetryMessage` model.
-- Implemented validation for required fields, identifiers, integers, timestamps and payload content.
-- Added Coordinated Universal Time normalisation for source timestamps.
-- Implemented payload serialisation using canonical JSON.
-- Verified and updated SHA-256 payload hashing to support duplicate classification.
-- Added tests for valid messages, missing fields, timestamp normalisation and equivalent payload hashing.
-- Ran the message-contract test suite successfully after fixed the errors.
-- Committed the completed work to the `feat/baseline-message-contract` branch.
+- Defined the telemetry message fields agreed in TMA03.
+- Added validation for required fields, identifiers, sequence values, timestamps and payload content.
+- Normalised source timestamps to Coordinated Universal Time (UTC).
+- Added canonical JSON handling and SHA-256 payload hashing.
+- Added tests for valid messages, missing fields, timestamp handling and equivalent payload hashes.
 
-Problems:
-- Typos error were identified during the completed test run.
+Problems and corrections:
+- Minor typing and test-data errors were found during the first test runs and corrected.
+
+Outcome:
+- The telemetry contract and validation path were implemented.
+- Canonical payload hashing provided the basis for later duplicate control.
 
 Evidence:
-- Git branch: `feat/baseline-message-contract`
-- Git commit: `feat(contract): define telemetry message validation and hashing`
-- Passing automated test output
 - `models.py`
 - `validation.py`
 - `test_validation.py`
-- Design decisions D002 and D003
-
-Outcome:
-- The telemetry contract is now fixed in code and remains consistent with TMA03.
-- Canonical JSON ensures that payloads with the same content but different key ordering produce the same hash.
-- The message-contract and validation portion of DO1 is implemented.
-- Payload hashing provides part of the implementation required for DO4, although complete duplicate classification still depends on the SQLite repository.
-
-Next step:
-- Commit the SQLite WAL database initialisation, outbox repository and persistence tests on `feat/sqlite-outbox`.
+- Passing automated tests
+- Decisions D002 and D003
 
 TMA03 objectives:
 - DO1
 - DO4
-
 
 ## 02/08/2026
 
@@ -69,123 +61,36 @@ Branch:
 - `feat/sqlite-outbox`
 
 Completed:
-- Verified SQLite database initialisation.
-- Configured SQLite Write-Ahead Logging mode.
-- Enabled foreign-key enforcement for each database connection.
-- Added execution of `schema.sql` when the database is initialised.
-- Aligned the `outbox_messages` schema with the columns required by the repository.
-- Implemented repository-level insertion into the durable outbox.
-- Verified that the repository and database schema now operate consistently.
-- Ran the repository tests successfully.
+- Configured the gateway database to use SQLite WAL.
+- Enabled foreign-key checks for each connection.
+- Added execution of `schema.sql` during database initialisation.
+- Aligned the `outbox_messages` schema with the repository fields.
+- Implemented durable outbox insertion and duplicate/conflict classification.
+- Confirmed that committed records remain available after reopening the database.
 
-Problems identified:
-- Mixed tabs and spaces in `database.py` caused indentation and formatting errors.
-- The schema path in `test_database.py` did not reliably locate the repository-root `schema.sql` file.
-- `open_database()` opened the SQLite database but did not execute `schema.sql`, leaving the required `outbox_messages` table absent.
-- The original schema did not contain all columns used by `repository.py`, causing repository insertion failures.
-
-Corrective actions:
-- Replaced mixed indentation in `database.py` with consistent four-space indentation.
-- Updated the schema path in `test_database.py` to:
-
-  `Path(__file__).resolve().parent.parent / "schema.sql"`
-
-- Added schema execution during database initialisation:
-
-  `connection.executescript(schema_sql)`
-
-- Added the following required columns to `outbox_messages`:
-
-  - `received_at`
-  - `topic`
-  - `priority`
-  - `last_attempt_at`
-  - `acknowledged_at`
-  - `next_retry_at`
-
-- Retained the existing uniqueness constraints and durable delivery-state checks.
-
-Evidence:
-- Passing `test_repository.py` result with exit code 0.
-- Updated `database.py`.
-- Updated `test_database.py`.
-- Updated `schema.sql`.
-- Existing design decision D001.
-- Git diff for the `feat/sqlite-outbox` branch.
+Problems and corrections:
+- Mixed indentation caused errors in `database.py`.
+- The schema path used by tests was unreliable.
+- The database initially opened without executing `schema.sql`.
+- Several repository fields were missing from the first schema version.
+- These issues were corrected without changing the TMA03 message model or durable delivery states.
 
 Outcome:
-- The database initialiser now creates the required schema.
-- The SQLite schema and repository insertion logic are consistent.
-- The accepted TMA03 message fields and delivery-state model remain unchanged.
-- The corrections restored the implementation to the schema already agreed in D001 rather than introducing a new design.
-- Repository-level persistence is now functioning under the current test conditions.
+- Local persistence through the SQLite WAL outbox became stable and testable.
+- Expected retransmissions and conflicting content could be distinguished without creating additional outbox rows.
 
-Limitations:
-- Passing repository tests confirms local database behaviour but does not yet demonstrate MQTT ingestion, upstream publication or restart recovery.
-- DO2 should remain in progress until the full database test suite, including database reopening and persistence checks, has passed.
-- End-to-end duplicate control will still require MQTT ingestion and later recovery scenarios.
-
-Next action:
-- Run the complete database and repository test set.
-- Confirm WAL mode, schema version, persistence after reopening and duplicate/conflict classification.
-- Commit the completed SQLite outbox work.
-- Create `feat/gateway-ingestion`.
-- Connect the local Mosquitto subscription callback to `parse_telemetry_message()` and `store_message()`.
+Evidence:
+- `database.py`
+- `repository.py`
+- `schema.sql`
+- Database and repository tests
+- Decision D001
 
 TMA03 objectives:
 - DO2
 - DO4
 
-
-## 03/08/2026
-
-Branch:
-- `feat/gateway-ingestion`
-
-Started:
-- Created the gateway-ingestion implementation slice.
-- Defined the settings required for the ingestion slice.
-
-Planned implementation:
-- Create the configuration models for the local-first edge gateway.
-- Define safe values for the local testing
-
-current status:
-- Implemented
-
-TMA03 objectives:
-
-
-## 04/08/2026
-
-Branch:
-- `feat/gateway-ingestion`
-
-Started:
-- Defined the slice boundary as local MQTT ingestion through to local
-  SQLite persistence.
-- Confirmed that upstream publication, retries, link-stability detection,
-  controlled recovery and NetEm testing remain outside this slice.
-
-Planned implementation:
-- Add local Mosquitto connection configuration.
-- Subscribe to the agreed telemetry topic filter at QoS 1.
-- Connect the MQTT message callback to `parse_telemetry_message()`.
-- Pass validated telemetry to `store_message()`.
-- Record inserted, duplicate, conflict, rejected and error outcomes.
-- Add focused ingestion tests.
-- Complete a real Mosquitto smoke test.
-
-Current status:
-- In progress.
-
-TMA03 objectives:
-- DO1
-- DO2
-- DO4
-
-
-## 07/08/2026
+## 03/08/2026 to 07/08/2026
 
 Branch:
 - `feat/gateway-ingestion`
@@ -194,294 +99,148 @@ Commit:
 - `feat(ingestion): persist local MQTT telemetry`
 
 Completed:
-- Implemented configuration for the local Mosquitto connection.
-- Implemented the local MQTT subscription using the agreed topic filter
-  and QoS 1.
-- Connected the MQTT callback to `parse_telemetry_message()` and
-  `store_message()`.
-- Kept validation and SQL logic outside the callback.
-- Added structured outcomes for inserted, duplicate, conflict, rejected
-  and database-error cases.
-- Added ingestion tests.
-- Completed a real Mosquitto smoke test.
-- Verified that a valid MQTT publication creates one durable `pending`
-  outbox row.
-- Verified that an identical retransmission does not create another row.
-- Verified that malformed JSON does not enter the outbox.
+- Added configuration for the local Mosquitto broker.
+- Subscribed to `telemetry/#` using MQTT Quality of Service (QoS) 1.
+- Connected the MQTT callback to message validation and SQLite persistence.
+- Kept validation and database logic outside the MQTT callback.
+- Added outcomes for inserted, duplicate, conflict and rejected messages.
+- Completed automated tests and a real local Mosquitto smoke test.
 
-Problems:
-- message_id and row_id were defined as required fields in the dataclass. However, process_mqtt_publication does not supply those fields.
-- valid_paylod() test failed because returned bytes that were not valid JSON.
-
-Corrective actions:
-- Default values (None) were added to message_id and row_id, allowing the dataclass to represent both success and error outcomes consistently.
-- valid_payload() returns json.dumps({"temperature_c": 18.5}).encode("utf-8") instead
-of b"temperature_c=18.5".
-
-Evidence:
-- Passing ingestion tests.
-- Passing full test suite.
-- Gateway log from the Mosquitto smoke test.
-- SQLite query showing the persisted `pending` row.
-- Git branch and commit.
-- Design decision D005.
+Problems and corrections:
+- Some result fields were initially required even when a rejected message had no row or message identifier.
+- One test helper returned bytes that were not valid JSON.
+- The result model and test data were corrected.
 
 Outcome:
-- The complete local ingestion path is operational:
+- The local ingestion path became operational:
 
-  `publisher → local broker → gateway callback → validation → SQLite WAL`
+  `publisher → local broker → local-first edge gateway → SQLite WAL`
 
-- This demonstrates durable local ingestion but does not yet demonstrate
-  upstream publication or controlled recovery.
+- This demonstrated local persistence before any upstream publication was attempted.
 
-Limitations:
-- Upstream delivery has not yet been implemented.
-- Broker acknowledgements have not yet been linked to outbox state.
-- NetEm has not yet been applied to the complete MQTT path.
-
-Next action:
-- Begin `feat/upstream-publication`.
-- Publish eligible `pending` rows to the upstream broker and implement
-  the initial acknowledgement-state transition.
+Evidence:
+- Passing ingestion tests
+- Gateway smoke-test log
+- SQLite row inspection
+- Decision D005
 
 TMA03 objectives:
 - DO1
 - DO2
 - DO4
 
-
-## 08/08/2026
-
-Branch:
-- `feat/upstream-publication`
-
-Started:
-- Created the upstream-publication implementation slice.
-- Defined the settings required for the upstream slice.
-
-Planned implementation:
-- Create the configuration models for the local-first edge gateway.
-- Define safe values for the local testing
-
-current status:
-- Implemented
-
-
-
-## 09/08/2026
+## 08/08/2026 to 09/08/2026
 
 Branch:
 - `feat/upstream-publication`
-
-Implementation slice:
-- Upstream MQTT publication
 
 Completed:
-- Implemented a separate upstream MQTT client for forwarding telemetry
-  already committed to the SQLite WAL outbox.
-- Implemented selection of the next eligible `pending` outbox record.
-- Kept the baseline publisher deliberately limited to one message per
-  publication operation so that uncontrolled backlog replay is not
-  introduced before the controlled-recovery slice.
-- Implemented the durable transition from `pending` to `in_flight`
-  immediately before upstream publication.
-- Incremented `attempt_count` and recorded `last_attempt_at` when a
-  publication attempt starts.
-- Implemented MQTT Quality of Service 1 upstream publication.
-- Implemented waiting for the broker acknowledgement before treating a
-  publication as successful.
-- Implemented the transition from `in_flight` to
-  `broker_acknowledged` when the QoS 1 acknowledgement is confirmed.
-- Implemented the transition from `in_flight` to `retry_wait` when
-  publication cannot be started, fails or the acknowledgement is not
-  confirmed within the configured timeout.
-- Added a `NO_PENDING` outcome so that an empty outbox is handled without
-  an error or unnecessary MQTT publication.
-- Added structured publication results containing the outbox row,
-  message identifier, MQTT message identifier and publication outcome.
-- Added automated tests covering successful acknowledgement, immediate
-  MQTT publication failure, acknowledgement timeout and an empty outbox.
-- Completed a real upstream Mosquitto smoke test and confirmed successful
-  QoS 1 publication, broker acknowledgement, subscriber receipt and
-  durable SQLite state transition.
+- Added a separate MQTT client for publication to the upstream broker.
+- Selected one eligible `pending` record at a time to avoid introducing uncontrolled backlog replay before the controlled recovery slice.
+- Added the durable transitions:
+  - `pending → in_flight`
+  - `in_flight → broker_acknowledged`
+  - `in_flight → retry_wait`
+- Recorded publication attempts and acknowledgement timestamps.
+- Added handling for an empty pending outbox.
+- Added automated tests for success, immediate publication failure, acknowledgement timeout and no pending record.
+- Verified that the full telemetry identity is preserved during upstream publication.
+- Completed a real Mosquitto smoke test on `localhost:1884`.
 
-Problems identified:
-- The first complete upstream test run produced four failures in
-  `tests/test_upstream.py`.
-- All four failures initially originated from the same SQL statement in
-  `get_next_pending_message()` rather than from separate upstream
-  publication problems.
-- The `SELECT` statement contained a trailing comma after
-  `attempt_count`, causing SQLite to raise:
+Problems and corrections:
+- A SQL syntax error prevented the first upstream tests from reaching MQTT publication.
+- `mark_in_flight()` used the wrong timestamp variable name.
+- The empty-outbox path did not initially handle `fetchone()` returning `None`.
+- The standalone publication script required correction to the project execution/import setup.
+- `broker_port` was initially stored as a string instead of an integer.
+- Each issue was corrected and the affected tests were rerun.
 
-  `sqlite3.OperationalError: near "FROM": syntax error`
-
-- Because the query failed before returning an outbox row, none of the
-  four upstream tests reached the MQTT publication logic during that
-  run.
-- After correcting the SQL syntax, the tests progressed into the
-  repository state-transition logic.
-- Three tests then failed because `mark_in_flight()` assigned the current
-  timestamp to a variable named `row` but attempted to use an undefined
-  variable named `now`.
-- The empty-outbox test failed because `get_next_pending_message()` did
-  not handle `fetchone()` returning `None`.
-- During the real smoke-test preparation, the standalone
-  `tools/publish_pending.py` script initially failed to locate the
-  `edge_gateway` package because of the project's Python import path.
-- A later configuration error was also identified because
-  `broker_port` was represented as a string rather than an integer,
-  causing configuration validation to raise a `TypeError`.
-
-Corrective actions:
-- Removed the trailing comma after `attempt_count` in
-  `get_next_pending_message()`.
-- Changed the SQL delivery-state comparison to use the string literal
-  `'pending'`.
-- Added an explicit `if row is None: return None` guard to
-  `get_next_pending_message()`.
-- Retained deterministic pending-message selection using
-  `source_timestamp ASC, id ASC`.
-- Changed `row = utc_now()` to `now = utc_now()` in
-  `mark_in_flight()`.
-- Reviewed the remaining state-transition functions for consistent
-  timestamp handling.
-- Corrected the standalone execution environment so that
-  `publish_pending.py` could import the project modules.
-- Corrected `broker_port` so that it is stored as an integer rather than
-  a string.
-- Re-ran the affected tests after each correction before proceeding to
-  the real broker smoke test.
-
-Initial test evidence:
-- The full test suite initially collected 15 tests.
-- 11 existing database, ingestion, repository and validation tests
-  passed.
-- Four new upstream-publication tests initially failed because of the
-  shared SQL syntax error.
-- The existing implementation therefore remained stable while defects in
-  the new upstream-publication slice were isolated and corrected.
-
-Initially failing tests:
-
-- `test_successful_publish_becomes_broker_acknowledged`
-- `test_publish_error_moves_message_to_retry_wait`
-- `test_acknowledgement_timeout_moves_message_to_retry_wait`
-- `test_no_pending_message_returns_without_publishing`
-
-Final verification:
-- Re-ran the upstream automated tests after correcting the repository
-  implementation.
-- The focused upstream-publication tests passed.
-- Completed a real Mosquitto smoke test using an upstream broker on port
-  1884.
-- The `edge-gateway-upstream` client connected successfully and published
-  `msg-smoke-002` to `telemetry/sensor-001` using MQTT QoS 1.
-- The Mosquitto broker log confirmed receipt of the QoS 1 `PUBLISH` and
-  transmission of the corresponding `PUBACK`.
-- An independent `mosquitto_sub` client subscribed to `telemetry/#`
-  received the expected payload:
-
-  `{"temperature_c":18.5}`
-
-- The gateway reported:
-
-  `outcome=broker_acknowledged row_id=2 message_id=msg-smoke-002 mid=1`
-
-- SQLite inspection confirmed that the message remained durably recorded
-  with:
-
-  - `delivery_state = broker_acknowledged`
-  - `attempt_count = 1`
-  - populated `last_attempt_at`
-  - populated `acknowledged_at`
-
-Smoke-test evidence:
-
-- Upstream broker: `localhost:1884`
-- Gateway MQTT client: `edge-gateway-upstream`
-- Topic: `telemetry/sensor-001`
-- QoS: 1
-- Message: `msg-smoke-002`
-- MQTT message identifier: 1
-- Subscriber receipt: confirmed
-- Broker `PUBACK`: confirmed
-- Durable SQLite acknowledgement state: confirmed
+Outcome:
+- The gateway can now move a durably stored message to the upstream broker using QoS 1.
+- Broker acknowledgement is stored as `broker_acknowledged`.
+- Failed or uncertain publication remains durably available as `retry_wait`.
+- This is a prerequisite for controlled recovery, but DO3 is not yet implemented.
 
 Evidence:
 - `src/upstream.py`
 - Updated `src/repository.py`
-- Upstream configuration in `src/config.py`
 - `tools/publish_pending.py`
 - `tests/test_upstream.py`
-- Initial pytest output showing 11 passed and 4 failed.
-- Subsequent passing focused upstream tests.
-- Mosquitto broker log.
-- Independent subscriber output.
-- Gateway publication log.
-- SQLite state inspection.
-- Corrected `get_next_pending_message()` query.
-- Design decision D006.
+- Mosquitto broker and gateway logs
+- SQLite state inspection
+- Decision D006
+
+TMA03 objectives:
+- DO2
+- Prerequisite for DO3
+- Foundation for EO1 and EO2
+
+## 09/08/2026 to 14/08/2026
+
+Branch:
+- `feat/evaluation-collector`
+
+Completed:
+- Added an independent MQTT evaluation collector connected to the upstream broker.
+- Kept evaluation evidence in `data/evaluation.db`, separate from gateway operational state in `data/gateway.db`.
+- Reused the existing Python database and repository modules to avoid unnecessary file duplication.
+- Added evaluation run identifiers, receipt timestamps, message identity, payload hashes and MQTT metadata.
+- Preserved repeated collector observations so that later duplicate-control evaluation can count them.
+- Added persistent records for rejected collector messages.
+- Confirmed that the upstream publication preserves the complete telemetry envelope required for reconciliation.
+- Added shared test helpers to reduce repeated test data.
+- Completed a one-message publisher-to-collector smoke test.
+- Completed known-set baseline run `baseline-050-001` using 50 unique messages.
+- Produced a publisher output and reconciled publisher, gateway and collector evidence.
+- Calculated baseline delivery completeness from unique expected identities.
+
+Problems and corrections:
+- The first repeated-observation test referenced a missing test helper.
+- Collector persistence initially expected `payload_hash` to be part of `TelemetryMessage`, although the project treats it as derived evidence.
+- The collector was changed to calculate the hash using the existing canonical payload-hash function.
+- Raw MQTT evidence was stored as bytes rather than a Python dictionary.
+
+Baseline evidence for `baseline-050-001`:
+- Unique generated messages: 50
+- Gateway records present: 50
+- Gateway records `broker_acknowledged`: 50
+- Collector observations: 50
+- Unique expected messages observed: 50
+- Missing gateway records: 0
+- Missing collector observations: 0
+- Duplicate collector observations: 0
+- Payload conflicts: 0
+- Unexpected collector identities: 0
+- Baseline delivery completeness: 100.0%
 
 Outcome:
-- The implementation now connects durable local persistence to the
-  upstream MQTT publication path.
-- A selected message is placed in `in_flight` before publication so that
-  the database records that a transmission attempt has begun.
-- Confirmed QoS 1 acknowledgement changes the durable state to
-  `broker_acknowledged`.
-- Failed or uncertain publication changes the durable state to
-  `retry_wait`.
-- The implementation preserves the acknowledgement uncertainty described
-  in TMA03 rather than assuming that an attempted publication was
-  delivered successfully.
-- The real smoke test demonstrated successful broker acknowledgement and
-  independent subscriber receipt under normal local network conditions.
-- Broker acknowledgement remains distinct from formal end-to-end
-  collector evidence.
+- The baseline publisher-to-collector measurement path is complete under normal, unimpaired local network conditions.
+- Broker acknowledgement and collector observation are kept as separate evidence.
+- Publisher, gateway and collector records can now be reconciled using telemetry identity and payload hash.
+- The 100.0% result is a baseline only. It does not demonstrate resilience under intermittent connectivity.
+
+Evidence:
+- `evidence/baseline-050-001/publisher_output.csv`
+- `evidence/baseline-050-001/reconciliation.csv`
+- `evidence/baseline-050-001/summary.json`
+- `gateway.db`
+- `evaluation.db`
+- Mosquitto broker, gateway and collector logs
+- Passing automated test suite
+- Decision D007
 
 Limitations:
-- `broker_acknowledged` proves interaction with the upstream broker only.
-  It does not yet prove that the evaluation collector received the
-  telemetry.
-- `retry_wait` records are not yet automatically rescheduled.
-- Stale `in_flight` recovery is not implemented in this slice.
-- Link-stability detection is not implemented.
-- Bounded backlog replay is not implemented.
-- Priority-aware recovery scheduling is not implemented.
-- NetEm impairment has not yet been applied to this complete publication
-  path.
+- Formal duplicate-control evaluation has not yet been completed.
+- Stale `in_flight` recovery remains outstanding.
+- Link-stability detection and bounded backlog replay remain outstanding.
+- Formal impairment-based evaluation under intermittent connectivity has not yet begun.
 
-Relationship to TMA03:
-- Implements the durable transitions defined in the TMA03
-  outbox state model:
-  `pending → in_flight → broker_acknowledged`
-- Implements failure handling:
-  `in_flight → retry_wait`
-- Establishes the acknowledgement-handling foundation required before
-  stale `in_flight` recovery and controlled recovery are implemented.
-- Does not claim that controlled recovery, DO3, has been completed.
+Next action:
+- Complete and merge `feat/evaluation-collector`.
+- Begin `feat/duplicate-control`.
+- Use the existing publisher and collector evidence to measure expected retransmissions, conflicting content and collector-side duplicate arrival.
 
-Next action should be:
-- run the complete automated test suite once more before closing the
-  branch, if this has not already been done after the final corrections.
-- Keep the broker, publisher, subscriber and SQLite smoke-test
-  outputs as implementation evidence.
-- Commit the verified `feat/upstream-publication` slice.
-- Merge the completed slice into the project baseline and confirm that
-  the complete test suite remains green.
-- Start `feat/evaluation-collector` to replace the diagnostic subscriber
-  with persistent, independent downstream output evidence.
-- Use the publisher and collector evidence later to calculate delivery
-  completeness under EO1.
-
-  TMA03 objectives:
-
-- DO2: extends durable local persistence into durable upstream
-  delivery-state tracking.
-- DO3: provides a prerequisite for controlled recovery; link-stability
-  detection and bounded replay remain outstanding.
-- EO1: establishes the upstream publication path required for later
-  collector-based delivery-completeness measurement.
-- EO2: establishes acknowledgement and retransmission behaviour required
-  for later duplicate-control evaluation.
+TMA03 objectives:
+- EO1: measurement method implemented; formal controlled-recovery evaluation remains outstanding.
+- EO2: measurement foundation implemented; deliberate duplicate scenarios remain outstanding.
+- Supports later DO3 recovery evaluation.
