@@ -35,3 +35,25 @@ CREATE TABLE IF NOT EXISTS outbox_messages (
         source_sequence
     )
 );
+
+CREATE TABLE IF NOT EXISTS gateway_duplicate_observations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    observed_at TEXT NOT NULL,
+
+    observed_message_id TEXT NOT NULL,
+    device_id TEXT NOT NULL,
+    publisher_session_id TEXT NOT NULL,
+    source_sequence INTEGER NOT NULL,
+
+    classification TEXT NOT NULL
+        CHECK (
+            classification IN (
+                'expected_retransmission',
+                'payload_conflict'
+            )
+        ),
+
+    stored_payload_hash TEXT NOT NULL,
+    observed_payload_hash TEXT NOT NULL
+);

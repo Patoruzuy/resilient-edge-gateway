@@ -104,6 +104,54 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO4
 
+### DUP-01: Expected retransmission evidence
+
+**Purpose:** Confirm that an expected retransmission is recorded as duplicate-control evidence as well as being rejected from the outbox.
+
+**Expected:** the second copy returns `duplicate`, the outbox remains at one row, one `expected_retransmission` observation is recorded, and the stored and observed payload hashes match.
+
+**Actual:** Passed.
+
+**Evidence:** repository duplicate test and `gateway_duplicate_observations`.
+
+**Objectives:** DO4
+
+### DUP-02: Data-integrity anomaly evidence
+
+**Purpose:** Confirm that conflicting content for an existing idempotency key remains visible without replacing the accepted telemetry.
+
+**Expected:** the outcome is `conflict`, the outbox remains at one row, one `payload_conflict` observation is recorded, the payload hashes differ, and the original payload remains unchanged.
+
+**Actual:** Passed.
+
+**Evidence:** repository conflict test and `gateway_duplicate_observations`.
+
+**Objectives:** DO4
+
+### DUP-03: Collector repeated observation count
+
+**Purpose:** Confirm that repeated observations remain visible at the evaluation collector and can be counted independently from gateway duplicate control.
+
+**Expected:** two observations with the same stable identity and payload hash produce one repeated collector observation.
+
+**Actual:** Passed.
+
+**Evidence:** `test_collector_preserves_repeated_observations`.
+
+**Objectives:** EO2 foundation
+
+### DUP-04: Collector conflicting observation
+
+**Purpose:** Confirm that the collector can identify two observations with the same stable identity but different payload content.
+
+**Expected:** both observations remain stored and the duplicate summary reports one conflicting observation rather than one repeated observation.
+
+**Actual:** Passed.
+
+**Evidence:** collector conflicting-observation test and payload-hash comparison.
+
+**Objectives:** EO2 foundation
+
 ## Upstream publication
 
 ### UP-01: Successful upstream QoS 1 publication

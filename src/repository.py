@@ -27,7 +27,6 @@ from .models import TelemetryMessage
 from .validation import (
     calculate_payload_hash,
     normalised_payload_json,
-    calculate_payload_hash,
     )
 
 
@@ -59,6 +58,21 @@ class PendingOutboxMessage:
     topic: str
     payload: str
     attempt_count: int
+
+@dataclass(frozen=True, slots=True)
+class GatewayDuplicateSummary:
+    """Duplicate-control evidence recorded by the gateway."""
+    expected_retransmissions: int
+    payload_conflicts: int
+
+
+@dataclass(frozen=True, slots=True)
+class CollectorDuplicateSummary:
+    """Duplicate-control evidence calculated from observations."""
+    total_observations: int
+    unique_identities: int
+    repeated_observations: int
+    conflicting_observations: int
 
 
 def utc_now() -> str:
@@ -139,7 +153,6 @@ def store_message(
                     now,
                 ),
             )
-
         row_id = cursor.lastrowid
 
         if row_id is None:
@@ -168,12 +181,34 @@ def store_message(
         ).fetchone()
 
         if existing is not None:
-            if str(existing["payload_hash"]) == payload_hash:
+            stored_payload_hash = str(
+                existing["payload_hash"]
+            )
+
+            if stored_payload_hash == payload_hash:
+                with connection:
+                    _record_duplicate_observation(
+                        connection,
+                        message=message,
+                        classification="expected_retransmission",
+                        stored_payload_hash=stored_payload_hash,
+                        observed_payload_hash=payload_hash,
+                    )
+
                 return StoreResult(
                     outcome=StoreOutcome.DUPLICATE,
                     row_id=int(existing["id"]),
                     message_id=str(existing["message_id"]),
                 )
+            with connection:
+                _record_duplicate_observation(
+                    connection,
+                    message=message,
+                    classification="payload_conflict",
+                    stored_payload_hash=stored_payload_hash,
+                    observed_payload_hash=payload_hash,
+                )
+
             return StoreResult(
                 outcome=StoreOutcome.CONFLICT,
                 row_id=int(existing["id"]),
@@ -215,7 +250,20 @@ def store_message(
             if same_identity
             else StoreOutcome.CONFLICT
         )
+        classification = (
+            "expected_retransmission"
+            if outcome == StoreOutcome.DUPLICATE
+            else "payload_conflict"
+        )
 
+        with connection:
+            _record_duplicate_observation(
+                connection,
+                message=message,
+                classification=classification,
+                stored_payload_hash=str(existing["payload_hash"]),
+                observed_payload_hash=payload_hash,
+            )
         return StoreResult(
             outcome=outcome,
             row_id=int(existing["id"]),
@@ -385,7 +433,6 @@ def mark_retry_wait(
 
 def record_collector_observation(
     connection: sqlite3.Connection,
-    *,
     run_id: str,
     topic: str,
     qos: int,
@@ -489,3 +536,133 @@ def record_collector_rejection(
         )
 
     return int(cursor.lastrowid)
+
+
+# Duplicate control
+
+def _record_duplicate_observation(
+    connection: sqlite3.Connection,
+    *,
+    message: TelemetryMessage,
+    classification: str,
+    stored_payload_hash: str,
+    observed_payload_hash: str,
+) -> int:
+    """Record duplicate-control evidence for later evaluation."""
+    observed_at = utc_now()
+
+    cursor = connection.execute(
+        """
+        INSERT INTO gateway_duplicate_observations (
+            observed_at,
+            observed_message_id,
+            device_id,
+            publisher_session_id,
+            source_sequence,
+            classification,
+            stored_payload_hash,
+            observed_payload_hash
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            observed_at,
+            message.message_id,
+            message.device_id,
+            message.publisher_session_id,
+            message.source_sequence,
+            classification,
+            stored_payload_hash,
+            observed_payload_hash,
+        ),
+    )
+
+    return int(cursor.lastrowid)
+
+
+def get_gateway_duplicate_summary(
+    connection: sqlite3.Connection,
+) -> GatewayDuplicateSummary:
+    """Return persistent gateway duplicate-control counts."""
+    expected_retransmissions = connection.execute(
+        """
+        SELECT COUNT(*)
+        FROM gateway_duplicate_observations
+        WHERE classification = 'expected_retransmission'
+        """
+    ).fetchone()[0]
+
+    payload_conflicts = connection.execute(
+        """
+        SELECT COUNT(*)
+        FROM gateway_duplicate_observations
+        WHERE classification = 'payload_conflict'
+        """
+    ).fetchone()[0]
+
+    return GatewayDuplicateSummary(
+        expected_retransmissions=int(expected_retransmissions),
+        payload_conflicts=int(payload_conflicts),
+    )
+
+
+def get_collector_duplicate_summary(
+    connection: sqlite3.Connection,
+    run_id: str,
+) -> CollectorDuplicateSummary:
+    """
+    Calculate duplicate-control evidence for one collector run.
+
+    The first occurrence of an idempotency key establishes the payload
+    hash for that logical telemetry message. Later observations with the
+    same hash are repeated deliveries. A different hash for the same
+    identity is conflicting content.
+    """
+    rows = connection.execute(
+        """
+        SELECT
+            device_id,
+            publisher_session_id,
+            source_sequence,
+            payload_hash
+        FROM collector_observations
+        WHERE run_id = ?
+        ORDER BY id ASC
+        """,
+        (run_id,),
+    ).fetchall()
+
+    first_hash_by_identity: dict[
+        tuple[str, str, int],
+        str,
+    ] = {}
+
+    repeated_observations = 0
+    conflicting_observations = 0
+
+    for row in rows:
+        identity = (
+            str(row["device_id"]),
+            str(row["publisher_session_id"]),
+            int(row["source_sequence"]),
+        )
+
+        payload_hash = str(row["payload_hash"])
+
+        first_hash = first_hash_by_identity.get(identity)
+
+        if first_hash is None:
+            first_hash_by_identity[identity] = payload_hash
+            continue
+
+        if payload_hash == first_hash:
+            repeated_observations += 1
+        else:
+            conflicting_observations += 1
+
+    return CollectorDuplicateSummary(
+        total_observations=len(rows),
+        unique_identities=len(first_hash_by_identity),
+        repeated_observations=repeated_observations,
+        conflicting_observations=conflicting_observations,
+    )

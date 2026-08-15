@@ -244,3 +244,29 @@ TMA03 objectives:
 - EO1: measurement method implemented; formal controlled-recovery evaluation remains outstanding.
 - EO2: measurement foundation implemented; deliberate duplicate scenarios remain outstanding.
 - Supports later DO3 recovery evaluation.
+
+
+## 14/08/2026
+
+Branch:
+- `feat/duplicate-control`
+
+Completed:
+- Added persistent evidence for expected retransmissions and conflicting content.
+- Kept the existing idempotency key, payload hash and SQLite uniqueness constraint.
+- Confirmed that repeated or conflicting messages do not create another outbox row.
+- Added collector-side duplicate and conflict counts.
+- Completed automated and manual duplicate-control tests.
+
+Evidence:
+- DUP-01 to DUP-04
+- `gateway_duplicate_observations`
+- collector run evidence
+- D008
+
+Outcome:
+- Duplicate control can now be measured at the gateway and evaluation collector.
+- DO4 remains implemented and EO2 remains in progress.
+
+Next:
+- `feat/stale-inflight-recovery`

@@ -27,10 +27,12 @@ def valid_message(payload: dict | None = None) -> dict:
         "payload": payload or {"temperature_c": 18.5},
     }
 
-def valid_message_bytes() -> bytes:
+def valid_message_bytes(message: dict | None = None) -> bytes:
     """Return the valid telemetry message as the MQTT-style UTF-8 bytes"""
+    if message == None:
+        message = valid_message()
     return json.dumps(
-        valid_message(),
+        message,
         sort_keys=True,
         separators=(",", ":"),
         ensure_ascii=False,

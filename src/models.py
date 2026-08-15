@@ -19,7 +19,6 @@ from typing import Any
 @dataclass(frozen=True, slots=True)
 class TelemetryMessage:
     """Validated and normalised technical telemetry message."""
-
     message_id: str
     device_id: str
     publisher_session_id: str

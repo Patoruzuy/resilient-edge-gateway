@@ -1,12 +1,17 @@
 """
-Aligned the publisher, gateway and collector evidence for one run.
+Reconcile the publisher, gateway and collector evidence for one run.
 """
 import argparse
 import csv
 import json
+import sys
 import sqlite3
 from collections import defaultdict
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 
 def parse_args() -> argparse.Namespace:
@@ -41,10 +46,8 @@ def write_csv(path: Path, rows, fieldnames,) -> None:
         writer.writeheader()
         writer.writerows(rows)
 
-
 def main() -> None:
     args = parse_args()
-
     run_dir = (args.evidence_dir / args.run_id)
 
     publisher_path = (run_dir / "publisher_output.csv")
@@ -82,6 +85,17 @@ def main() -> None:
             """
         ).fetchall()
 
+        gateway_duplicate_rows = gateway.execute(
+            """
+            SELECT
+                device_id,
+                publisher_session_id,
+                source_sequence,
+                classification
+            FROM gateway_duplicate_observations
+            """
+        ).fetchall()
+
         collector_rows = evaluation.execute(
             """
             SELECT
@@ -111,6 +125,12 @@ def main() -> None:
         for row in gateway_rows
         if stable_key(row) in expected
     }
+    # filter the gateway duplicate evidence
+    run_gateway_duplicates = [
+        row
+        for row in gateway_duplicate_rows
+        if stable_key(row) in expected
+    ]
 
     collector_by_key = defaultdict(list)
 
@@ -118,7 +138,6 @@ def main() -> None:
         collector_by_key[stable_key(row)].append(row)
 
     reconciliation = []
-
     collector_unique_matches = 0
     collector_duplicate_observations = 0
     payload_conflicts = 0
@@ -158,12 +177,10 @@ def main() -> None:
 
         conflict = any(
             (
-                observation["message_id"]
-                != expected_message_id
+                observation["message_id"] != expected_message_id
             )
             or (
-                observation["payload_hash"]
-                != expected_hash
+                observation["payload_hash"] != expected_hash
             )
             for observation in observations
         )
@@ -180,12 +197,10 @@ def main() -> None:
                 "publisher_payload_hash": expected_hash,
                 "gateway_present": int(gateway_row is not None),
                 "gateway_state": (gateway_row["delivery_state"]
-                    if gateway_row
-                    else ""
+                    if gateway_row else ""
                 ),
                 "gateway_attempt_count": (gateway_row["attempt_count"]
-                    if gateway_row
-                    else ""
+                    if gateway_row else ""
                 ),
                 "collector_observation_count": len(observations),
                 "collector_valid_match": int(collector_observed),
@@ -195,7 +210,6 @@ def main() -> None:
         )
 
     generated_unique = len(expected)
-
     delivery_completeness = (
         100.0
         * collector_unique_matches
@@ -203,22 +217,36 @@ def main() -> None:
         if generated_unique
         else 0.0
     )
-
     unexpected_collector = sum(
         1
         for key in collector_by_key
         if key not in expected
     )
-
+    gateway_broker_acknowledged = sum(
+        1
+        for row in gateway_by_key.values()
+        if row["delivery_state"]
+        == "broker_acknowledged"
+    )
+    gateway_expected_retransmissions = sum(
+        1
+        for row in run_gateway_duplicates
+        if row["classification"]
+        == "expected_retransmission"
+    )
+    gateway_payload_conflicts = sum(
+        1
+        for row in run_gateway_duplicates
+        if row["classification"]
+        == "payload_conflict"
+    )
     summary = {
         "run_id": args.run_id,
         "generated_unique": generated_unique,
         "gateway_present": len(gateway_by_key),
-        "gateway_broker_acknowledged": sum(
-            1
-            for row in gateway_by_key.values()
-            if (row["delivery_state"] == "broker_acknowledged")
-        ),
+        "gateway_broker_acknowledged": gateway_broker_acknowledged,
+        "gateway_expected_retransmissions": gateway_expected_retransmissions,
+        "gateway_payload_conflicts": gateway_payload_conflicts,
         "collector_observations": len(collector_rows),
         "collector_unique_expected_observed": collector_unique_matches,
         "collector_duplicate_observations": collector_duplicate_observations,
@@ -240,7 +268,7 @@ def main() -> None:
     with (run_dir / "summary.json").open("w", encoding="utf-8") as file:
         json.dump(summary, file, indent=2)
 
-    print(json.dumps(summary, indent=2))
+    print(json.dumps(summary, indent=2)))
 
 
 if __name__ == "__main__":

@@ -19,7 +19,16 @@ def test_database_initialises_with_wal(tmp_path):
               AND name = 'outbox_messages'
             """
         ).fetchone()
+        duplicate_table = connection.execute(
+            """
+            SELECT name
+            FROM sqlite_master
+            WHERE type = 'table'
+              AND name = 'gateway_duplicate_observations'
+            """
+        ).fetchone()
         assert table is not None
+        assert duplicate_table is not None
     finally:
         connection.close()
 

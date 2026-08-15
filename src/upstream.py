@@ -50,7 +50,6 @@ class PublicationResult:
 def publish_one_pending(
     connection: sqlite3.Connection,
     client: Any,
-    *,
     qos: int = 1,
     acknowledgement_timeout_seconds: float = 5.0,
 ) -> PublicationResult:

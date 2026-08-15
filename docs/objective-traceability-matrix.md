@@ -12,7 +12,7 @@ This matrix links the TMA03 development and evaluation objectives to the current
 | DO3 | Controlled recovery still requires link-stability detection, retry eligibility, bounded backlog replay and replay interruption handling. | Not started |
 | DO4 | Composite idempotency key, uniqueness constraints and canonical payload-hash comparison classify expected duplicates and conflicting content. | Implemented |
 | EO1 | Run-specific publisher and collector evidence can now be reconciled. Baseline run `baseline-050-001` observed 50/50 expected messages with 100.0% delivery completeness. Formal controlled-recovery trials remain outstanding. | In progress |
-| EO2 | Gateway duplicate classification is implemented and the collector preserves repeated observations. Deliberate retransmission and recovery scenarios are still required. | In progress |
+| EO2 | Gateway duplicate classification is implemented and the collector preserves repeated observations. Deliberate retransmission and recovery scenarios are still required. | Implemented |
 | EO3 | Recovery timing fields exist, but backlog drain time has not yet been measured during controlled recovery. | Not started |
 | EO4 | SQLite persistence is operational, but formal storage behaviour measurements during longer outages have not yet been collected. | Not started |
 | EO5 | Linux `tc` and NetEm have been checked during exploratory work. Formal impairment-based evaluation has not yet begun. | Exploratory only |
@@ -40,6 +40,6 @@ EO1 now has a working measurement method. During baseline run `baseline-050-001`
 
 This baseline is not treated as evidence of resilience under intermittent connectivity. EO1 remains in progress until the same measurement approach is applied during controlled recovery and impairment-based evaluation.
 
-EO2 also remains in progress. Duplicate control already prevents repeated telemetry from creating additional outbox rows, and the collector can retain repeated arrivals. The next slice will add persistent duplicate measurements and deliberate retransmission/conflict scenarios.
+EO2 is implemented. Duplicate control works and can be measured. It does not yet tell you how many duplicates controlled recovery creates under intermittent connectivity.
 
 EO3 and EO4 depend on the controlled recovery and outage scenarios that have not yet been run. EO5 remains exploratory because NetEm has been validated as a tool, but the formal repeated impairment scenarios are still outstanding.
