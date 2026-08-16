@@ -74,9 +74,8 @@ def test_identical_retransmission_is_duplicate(tmp_path):
         assert observation["classification"] == "expected_retransmission"
         assert observation["stored_payload_hash"] == observation["observed_payload_hash"]
 
-        summary = get_gateway_duplicate_summary(
-            connection
-        )
+        summary = get_gateway_duplicate_summary(connection)
+
         assert summary.expected_retransmissions == 1
         assert summary.payload_conflicts == 0
     finally:
@@ -121,9 +120,8 @@ def test_same_key_with_different_payload_is_conflict(tmp_path):
         assert observation["classification"] == "payload_conflict"
         assert observation["stored_payload_hash"] != observation["observed_payload_hash"]
 
-        summary = get_gateway_duplicate_summary(
-            connection
-        )
+        summary = get_gateway_duplicate_summary(connection)
+
         assert summary.expected_retransmissions == 0
         assert summary.payload_conflicts == 1
 
@@ -197,10 +195,8 @@ def test_collector_preserves_repeated_observations(tmp_path):
             message=message,
         )
 
-        summary = get_collector_duplicate_summary(
-            connection,
-            run_id="run-001",
-        )
+        summary = get_collector_duplicate_summary(connection, run_id="run-001")
+
         # This cover DUP-03 collector repeated messages
         assert summary.total_observations == 2
         assert summary.unique_identities == 1
@@ -230,29 +226,19 @@ def test_collector_preserves_repeated_observations(tmp_path):
     finally:
         connection.close()
 
-def test_collector_identifies_conflicting_observation(
-    tmp_path,
-):
-    connection = open_evaluation_database(
-        tmp_path / "evaluation.db",
-        EVALUATION_SCHEMA_PATH,
-    )
+def test_collector_identifies_conflicting_observation(tmp_path):
+    database_path = tmp_path / "evaluation.db"
+    connection = open_evaluation_database(database_path, EVALUATION_SCHEMA_PATH)
 
     try:
         original_data = valid_message()
 
         conflicting_data = valid_message()
-        conflicting_data["payload"] = {
-            "temperature_c": 25.0,
-        }
+        conflicting_data["payload"] = {"temperature_c": 25.0}
 
-        original = parse_telemetry_message(
-            original_data
-        )
+        original = parse_telemetry_message(original_data)
+        conflicting = parse_telemetry_message(conflicting_data)
 
-        conflicting = parse_telemetry_message(
-            conflicting_data
-        )
         record_collector_observation(
             connection,
             run_id="conflict-run-001",

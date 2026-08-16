@@ -24,10 +24,7 @@ from datetime import datetime, timezone
 from enum import Enum
 
 from .models import TelemetryMessage
-from .validation import (
-    calculate_payload_hash,
-    normalised_payload_json,
-    )
+from .validation import calculate_payload_hash, normalised_payload_json
 
 
 class StoreOutcome(str, Enum):
@@ -78,8 +75,8 @@ class CollectorDuplicateSummary:
 def utc_now() -> str:
     """Return the current UTC timestamp in ISO 8601 format."""
     return datetime.now(timezone.utc).isoformat(
-    timespec="microseconds"
-    ).replace("+00:00", "Z")
+        timespec="microseconds"
+        ).replace("+00:00", "Z")
 
 
 # Gateway outbox operations
