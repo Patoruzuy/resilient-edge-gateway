@@ -47,23 +47,47 @@ def write_csv(path: Path, rows, fieldnames,) -> None:
         writer.writeheader()
         writer.writerows(rows)
 
+def print_collector_duplicate_summary(collector_rows, run_id: str) -> None:
+    """ Prints the collector duplicates summary without
+        a publisher manifest. Only when collector_only mode is used"""
+    collector_by_key = defaultdict(list)
+
+    for row in collector_rows:
+        collector_by_key[stable_key(row)].append(row)
+
+    duplicate_observations = 0
+    conflicting_observations = 0
+    conflicting_identities = 0
+
+    for observations in collector_by_key.values():
+        reference_hash = observations[0]["payload_hash"]
+
+        has_conflict = False
+
+        for observation in observations[1:]:
+            if observation["payload_hash"] == reference_hash:
+                duplicate_observations += 1
+            else:
+                conflicting_observations += 1
+                has_conflict = True
+
+        if has_conflict:
+            conflicting_identities += 1
+
+    summary = {
+        "run_id": run_id,
+        "collector_observations": len(collector_rows),
+        "collector_unique_identities": len(collector_by_key),
+        "collector_duplicate_observations": duplicate_observations,
+        "collector_conflicting_observations": conflicting_observations,
+        "collector_conflicting_identities": conflicting_identities,
+    }
+
+    print(json.dumps(summary, indent=2))
+
 def main() -> None:
     args = parse_args()
     run_dir = (args.evidence_dir / args.run_id)
-
-    publisher_rows = []
-
-    if not args.collector_only:
-        publisher_path = run_dir / "publisher_output.csv"
-        publisher_rows = read_publisher_output(publisher_path)
-
-    expected = {
-        stable_key(row): row
-        for row in publisher_rows
-    }
-
-    if len(expected) != len(publisher_rows):
-        raise RuntimeError("Publisher output contains duplicate stable identities.")
 
     gateway = sqlite3.connect(args.gateway_db)
     gateway.row_factory = sqlite3.Row
@@ -123,6 +147,22 @@ def main() -> None:
     finally:
         gateway.close()
         evaluation.close()
+
+
+    if args.collector_only:
+        print_collector_duplicate_summary(collector_rows, args.run_id)
+        return
+
+    publisher_path = run_dir / "publisher_output.csv"
+    publisher_rows = read_publisher_output(publisher_path)
+
+    expected = {
+        stable_key(row): row
+        for row in publisher_rows
+    }
+
+    if len(expected) != len(publisher_rows):
+        raise RuntimeError("Publisher output contains duplicate stable identities.")
 
     gateway_by_key = {
         stable_key(row): row
@@ -269,16 +309,16 @@ def main() -> None:
         "unexpected_collector_identities": unexpected_collector,
         "delivery_completeness_pct": round(delivery_completeness, 3),
     }
-    if not args.collector_only:
-        write_csv(
-            run_dir / "reconciliation.csv",
-            reconciliation,
-            list(reconciliation[0].keys())
-            if reconciliation
-            else [],
-        )
-        with (run_dir / "summary.json").open("w", encoding="utf-8") as file:
-            json.dump(summary, file, indent=2)
+
+    write_csv(
+        run_dir / "reconciliation.csv",
+        reconciliation,
+        list(reconciliation[0].keys())
+        if reconciliation
+        else [],
+    )
+    with (run_dir / "summary.json").open("w", encoding="utf-8") as file:
+        json.dump(summary, file, indent=2)
 
     print(json.dumps(summary, indent=2))
 
