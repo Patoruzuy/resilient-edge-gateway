@@ -258,6 +258,16 @@ Completed:
 - Added collector-side duplicate and conflict counts.
 - Completed automated and manual duplicate-control tests.
 
+Problems and corrections:
+- The initial collector duplicate test successfully stored the
+  upstream observation, but the reconciliation tool failed because it
+  assumed that every evaluation run has a publisher manifest.
+- The reconciliation run was written for complete publisher-to-collector
+  evaluation runs. DUP-03 publishes directly to the upstream broker to isolate
+  collector duplicate behaviour, so no publisher manifest exists for this test.
+- Added an agrument collector-only mode. This allows collector duplicate
+  evidence to be analysed without the publisher-manifest requirement.
+
 Evidence:
 - DUP-01 to DUP-04
 - `gateway_duplicate_observations`
@@ -267,6 +277,7 @@ Evidence:
 Outcome:
 - Duplicate control can now be measured at the gateway and evaluation collector.
 - DO4 remains implemented and EO2 remains in progress.
+- Collector duplicate observations can be analysed independently.
 
 Next:
 - `feat/stale-inflight-recovery`

@@ -23,9 +23,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--evaluation-db", type=Path, default=Path("data/evaluation.db"))
 
     parser.add_argument("--evidence-dir", type=Path, default=Path("evidence"))
+    parser.add_argument("--collector-only", action="store_true",
+        help=("Reconcile collector duplicate-control evidence without need for "
+              "publisher or gateway evidence.",
+        ))
 
     return parser.parse_args()
-
 
 def stable_key(row) -> tuple[str, str, int]:
     return (
@@ -34,7 +37,6 @@ def stable_key(row) -> tuple[str, str, int]:
         int(row["source_sequence"]),
     )
 
-
 def read_publisher_output(path: Path) -> list[dict[str, str]]:
     with path.open(newline="",encoding="utf-8") as file:
         return list(csv.DictReader(file))
@@ -42,7 +44,6 @@ def read_publisher_output(path: Path) -> list[dict[str, str]]:
 def write_csv(path: Path, rows, fieldnames,) -> None:
     with path.open("w", newline="", encoding="utf-8") as file:
         writer = csv.DictWriter(file, fieldnames=fieldnames)
-
         writer.writeheader()
         writer.writerows(rows)
 
@@ -50,8 +51,11 @@ def main() -> None:
     args = parse_args()
     run_dir = (args.evidence_dir / args.run_id)
 
-    publisher_path = (run_dir / "publisher_output.csv")
-    publisher_rows = read_publisher_output(publisher_path)
+    publisher_rows = []
+
+    if not args.collector_only:
+        publisher_path = run_dir / "publisher_output.csv"
+        publisher_rows = read_publisher_output(publisher_path)
 
     expected = {
         stable_key(row): row
@@ -143,6 +147,9 @@ def main() -> None:
     payload_conflicts = 0
     missing_gateway = 0
     missing_collector = 0
+    collector_duplicate_observations = 0
+    collector_conflicting_identities = 0
+    collector_conflicting_observations = 0
 
     for key, publisher in expected.items():
         gateway_row = gateway_by_key.get(key)
@@ -158,10 +165,16 @@ def main() -> None:
             observation
             for observation in observations
             if (
-                observation["message_id"]
-                == expected_message_id
-                and observation["payload_hash"]
-                == expected_hash
+                observation["message_id"] == expected_message_id
+                and observation["payload_hash"] == expected_hash
+            )
+        ]
+        conflicting_observations = [
+            observation
+            for observation in observations
+            if (
+                observation["message_id"] != expected_message_id
+                or observation["payload_hash"] != expected_hash
             )
         ]
 
@@ -172,21 +185,17 @@ def main() -> None:
         else:
             missing_collector += 1
 
-        duplicate_count = max(0, len(observations) - 1)
-        collector_duplicate_observations += duplicate_count
 
-        conflict = any(
-            (
-                observation["message_id"] != expected_message_id
-            )
-            or (
-                observation["payload_hash"] != expected_hash
-            )
-            for observation in observations
-        )
+        # Only the repeated valid copies count as normal duplicates
+        valid_duplicate_count = max(0, len(valid_observations) - 1)
+        # Each invalid observation is a conflict
+        conflict_count = len(conflicting_observations)
 
-        if conflict:
-            payload_conflicts += 1
+        collector_duplicate_observations += valid_duplicate_count
+        collector_conflicting_observations += conflict_count
+
+        if conflict_count:
+            collector_conflicting_identities += 1
 
         reconciliation.append(
             {
@@ -204,6 +213,7 @@ def main() -> None:
                 ),
                 "collector_observation_count": len(observations),
                 "collector_valid_match": int(collector_observed),
+                "collector_valid_duplicate_count": valid_duplicate_count,
                 "collector_duplicate_count": (duplicate_count),
                 "payload_conflict": int(conflict),
             }
@@ -247,28 +257,30 @@ def main() -> None:
         "gateway_broker_acknowledged": gateway_broker_acknowledged,
         "gateway_expected_retransmissions": gateway_expected_retransmissions,
         "gateway_payload_conflicts": gateway_payload_conflicts,
+
         "collector_observations": len(collector_rows),
         "collector_unique_expected_observed": collector_unique_matches,
         "collector_duplicate_observations": collector_duplicate_observations,
+        "collector_conflicting_observations": collector_conflicting_observations,
+        "collector_conflicting_identities": collector_conflicting_identities,
+
         "missing_gateway": missing_gateway,
         "missing_collector": missing_collector,
-        "payload_conflicts": payload_conflicts,
         "unexpected_collector_identities": unexpected_collector,
         "delivery_completeness_pct": round(delivery_completeness, 3),
     }
+    if not args.collector_only:
+        write_csv(
+            run_dir / "reconciliation.csv",
+            reconciliation,
+            list(reconciliation[0].keys())
+            if reconciliation
+            else [],
+        )
+        with (run_dir / "summary.json").open("w", encoding="utf-8") as file:
+            json.dump(summary, file, indent=2)
 
-    write_csv(
-        run_dir / "reconciliation.csv",
-        reconciliation,
-        list(reconciliation[0].keys())
-        if reconciliation
-        else [],
-    )
-
-    with (run_dir / "summary.json").open("w", encoding="utf-8") as file:
-        json.dump(summary, file, indent=2)
-
-    print(json.dumps(summary, indent=2)))
+    print(json.dumps(summary, indent=2))
 
 
 if __name__ == "__main__":

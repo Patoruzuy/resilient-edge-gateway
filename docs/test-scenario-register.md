@@ -210,7 +210,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Actual:** Passed. The independent subscriber also received the expected publication.
 
-**Conclusion:** Baseline upstream publication works under normal local conditions. This test does not measure resilience under intermittent connectivity.
+**Conclusion:** Upstream publication works under normal local conditions. This test does not measure resilience under intermittent connectivity.
 
 **Objectives:** DO2, prerequisite for DO3, foundation for EO1
 
@@ -258,11 +258,11 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** EO1 foundation
 
-## End-to-end baseline evidence
+## End-to-end evidence
 
 ### E2E-01: Single-message publisher-to-collector smoke test
 
-**Purpose:** Confirm the complete baseline path from local publication to independent collector observation.
+**Purpose:** Confirm the complete path from local publication to independent collector observation.
 
 **Configuration:** message `collector-smoke-001`, local broker `localhost:1883`, upstream broker `localhost:1884`, QoS 1, no NetEm impairment.
 
