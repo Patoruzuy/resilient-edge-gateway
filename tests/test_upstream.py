@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import paho.mqtt.client as mqtt
 
 from src.database import open_database
@@ -7,9 +5,7 @@ from src.repository import store_message
 from src.upstream import PublicationOutcome, publish_one_pending
 from src.validation import parse_telemetry_message
 
-from tests.helpers import valid_message
-
-SCHEMA_PATH = Path(__file__).resolve().parent.parent / "schema.sql"
+from tests.helpers import valid_message, SCHEMA_PATH
 
 
 class FakeMessageInfo:

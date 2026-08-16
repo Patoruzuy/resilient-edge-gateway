@@ -1,10 +1,6 @@
-from pathlib import Path
-
 from src.database import get_journal_mode, open_database, open_evaluation_database
+from tests.helpers import SCHEMA_PATH, EVALUATION_SCHEMA_PATH
 
-
-SCHEMA_PATH = Path(__file__).resolve().parent.parent / "schema.sql"
-EVALUATION_SCHEMA_PATH = Path(__file__).resolve().parent.parent / "evaluation_schema.sql"
 
 def test_database_initialises_with_wal(tmp_path):
     database_path = tmp_path / "gateway.db"

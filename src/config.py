@@ -63,6 +63,10 @@ class UpstreamConfig:
 
     connect_timeout_seconds: float = 5.0
     acknowledgement_timeout_seconds: float = 5.0
+    # The stale in_flight timeout should be longer than the normal
+    # acknowledgement timeout so that a recent publication attempt is not
+    # reset while it might still be alive.
+    stale_inflight_timeout_seconds: float = 30.0
 
     database_path: Path = Path("data/gateway.db") # The local storage
     schema_path: Path = Path("schema.sql") # SQL file schema
@@ -85,6 +89,10 @@ class UpstreamConfig:
             raise ValueError("connect_timeout_seconds must be positive.")
         if self.acknowledgement_timeout_seconds <= 0:
             raise ValueError("acknowledgement_timeout_seconds must be positive.")
+        if self.stale_inflight_timeout_seconds <= self.acknowledgement_timeout_seconds:
+            raise ValueError("stale_inflight_timeout_seconds must be longer "
+                             "than acknowledgement_timeout_seconds")
+
 
 
 @dataclass(frozen=True, slots=True)

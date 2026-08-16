@@ -372,7 +372,6 @@ def mark_broker_acknowledged(
 ) -> None:
     """
     Record completion of the upstream QoS 1 acknowledgement exchange.
-
     This state confirms broker acknowledgement. It does not prove that
     the later evaluation collector has seen the publication.
     """
@@ -428,6 +427,36 @@ def mark_retry_wait(
             expected_state="in_flight",
             target_state="retry_wait",
         )
+
+def recover_stale_in_flight(
+    connection: sqlite3.Connection,
+    stale_before: str,
+) -> int:
+    """
+    Move stale in_flight publication attempts to retry_wait.
+    The caller provides the stale threshold so that recovery behaviour
+    remains configurable and straightforward to test. Recovery does not
+    increase attempt_count because no new publication attempt is made.
+    """
+    now = utc_now()
+
+    with connection:
+        cursor = connection.execute(
+            """
+            UPDATE outbox_messages
+            SET
+                delivery_state = 'retry_wait',
+                next_retry_at = NULL,
+                updated_at = ?
+            WHERE delivery_state = 'in_flight'
+              AND last_attempt_at IS NOT NULL
+              AND last_attempt_at <= ?
+            """,
+            (now, stale_before),
+        )
+
+    return max(int(cursor.rowcount), 0)
+
 
 # Evaluation evidence operations
 
@@ -493,7 +522,6 @@ def record_collector_observation(
 
 def record_collector_rejection(
     connection: sqlite3.Connection,
-    *,
     run_id: str,
     topic: str,
     qos: int,
@@ -534,7 +562,6 @@ def record_collector_rejection(
                 raw_message,
             ),
         )
-
     return int(cursor.lastrowid)
 
 
@@ -542,7 +569,6 @@ def record_collector_rejection(
 
 def _record_duplicate_observation(
     connection: sqlite3.Connection,
-    *,
     message: TelemetryMessage,
     classification: str,
     stored_payload_hash: str,
@@ -576,7 +602,6 @@ def _record_duplicate_observation(
             observed_payload_hash,
         ),
     )
-
     return int(cursor.lastrowid)
 
 
@@ -612,7 +637,6 @@ def get_collector_duplicate_summary(
 ) -> CollectorDuplicateSummary:
     """
     Calculate duplicate-control evidence for one collector run.
-
     The first occurrence of an idempotency key establishes the payload
     hash for that logical telemetry message. Later observations with the
     same hash are repeated deliveries. A different hash for the same
@@ -646,7 +670,6 @@ def get_collector_duplicate_summary(
             str(row["publisher_session_id"]),
             int(row["source_sequence"]),
         )
-
         payload_hash = str(row["payload_hash"])
 
         first_hash = first_hash_by_identity.get(identity)

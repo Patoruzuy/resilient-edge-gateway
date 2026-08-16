@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import pytest
 
 from src.database import open_database
@@ -11,9 +9,7 @@ from src.repository import (
     store_message,
 )
 from src.validation import parse_telemetry_message
-
-
-SCHEMA_PATH = Path(__file__).resolve().parent.parent / "schema.sql"
+from tests.helpers import SCHEMA_PATH
 
 
 def create_pending_message(connection):

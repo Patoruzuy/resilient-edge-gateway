@@ -1,16 +1,11 @@
-from pathlib import Path
-
 from tests.helpers import valid_payload
 from src.database import open_database
 from src.ingestion import (
     IngestionOutcome,
     process_mqtt_publication,
 )
+from tests.helpers import SCHEMA_PATH
 
-
-SCHEMA_PATH = (
-    Path(__file__).resolve().parent.parent / "schema.sql"
-)
 
 def test_valid_mqtt_publication_is_persisted(tmp_path):
     database_path = tmp_path / "gateway.db"

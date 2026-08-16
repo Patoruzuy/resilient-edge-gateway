@@ -1,4 +1,3 @@
-from pathlib import Path
 import json
 
 from src.database import open_database, open_evaluation_database
@@ -10,11 +9,12 @@ from src.repository import (
     get_collector_duplicate_summary,
 )
 from src.validation import parse_telemetry_message
-from tests.helpers import valid_message, valid_message_bytes
-
-
-SCHEMA_PATH = Path(__file__).resolve().parent.parent / "schema.sql"
-EVALUATION_SCHEMA_PATH = Path(__file__).resolve().parent.parent / "evaluation_schema.sql"
+from tests.helpers import (
+    valid_message,
+    valid_message_bytes,
+    SCHEMA_PATH,
+    EVALUATION_SCHEMA_PATH,
+)
 
 def test_new_message_is_inserted_as_pending(tmp_path):
     database_path = tmp_path / "gateway.db"

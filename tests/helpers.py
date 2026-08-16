@@ -1,4 +1,8 @@
+from pathlib import Path
 import json
+
+SCHEMA_PATH = Path(__file__).resolve().parent.parent / "schema.sql"
+EVALUATION_SCHEMA_PATH = Path(__file__).resolve().parent.parent / "evaluation_schema.sql"
 
 def valid_payload():
     return json.dumps(
