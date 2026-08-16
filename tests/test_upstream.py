@@ -7,6 +7,7 @@ from src.repository import store_message
 from src.upstream import PublicationOutcome, publish_one_pending
 from src.validation import parse_telemetry_message
 
+from tests.helpers import valid_message
 
 SCHEMA_PATH = Path(__file__).resolve().parent.parent / "schema.sql"
 
@@ -14,7 +15,6 @@ SCHEMA_PATH = Path(__file__).resolve().parent.parent / "schema.sql"
 class FakeMessageInfo:
     def __init__(
         self,
-        *,
         rc=mqtt.MQTT_ERR_SUCCESS,
         mid=1,
         published=True,
@@ -53,20 +53,7 @@ class FakeMqttClient:
         return self.message_info
 
 def create_pending_message(connection):
-    message = parse_telemetry_message(
-        {
-            "message_id": "msg-000001",
-            "device_id": "sensor-001",
-            "publisher_session_id": "session-001",
-            "source_sequence": 1,
-            "source_timestamp": "2026-07-15T11:00:00Z",
-            "priority": 0,
-            "payload": {
-                "temperature_c": 18.5,
-                "humidity_percent": 71,
-            },
-        }
-    )
+    message = parse_telemetry_message(valid_message())
 
     return store_message(connection, message, "telemetry/sensor-001")
 

@@ -200,3 +200,42 @@ This implements the independent collector required for delivery completeness and
 ### Limitation
 
 Collector observation confirms arrival at the evaluation subscriber. It does not explain why a message was duplicated or lost. Those behaviours will be examined in the later duplicate-control and impairment-based evaluation work.
+
+---
+
+## D008: Persistent duplicate-control evidence
+
+Date: 14/08/2026
+Status: Accepted
+
+### Decision
+
+Keep the existing idempotency rule:
+
+`device_id + publisher_session_id + source_sequence`
+
+The existing payload hash is used to distinguish:
+
+- the same identity and same content as an expected retransmission;
+- the same identity and different content as a data-integrity anomaly.
+
+Neither case creates another outbox row.
+
+A small SQLite table records these duplicate-control events so that
+the results can be counted during later evaluation.
+
+The evaluation collector continues to retain all upstream observations,
+including repeated arrivals.
+
+### Reason
+
+TMA03 requires repeated messages and conflicting records to be
+distinguished using stable identifiers and SQLite uniqueness.
+
+Persisting the classification provides evidence for EO2 without changing
+the existing outbox design.
+
+### Limitation
+
+This slice confirms that duplicate control can be measured. It does not
+yet evaluate duplicates produced during controlled recovery.

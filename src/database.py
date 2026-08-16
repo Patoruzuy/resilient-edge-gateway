@@ -28,7 +28,7 @@ def open_database(database_path: str | Path, schema_path: str | Path) -> sqlite3
     Open and initialise the gateway database.
 
     A new database is created from the file schema.sql. WAL mode and
-    foreign-key enforcement are verified before the connection is returned.
+    foreign-key are verified before the connection is returned.
     """
     database_path = Path(database_path)
     schema_path = Path(schema_path)
@@ -92,7 +92,7 @@ def open_evaluation_database(
     state so that measurement records do not affect the system being
     evaluated.
     """
-    database_path.parent.mkdir(parents=True,exist_ok=True,)
+    database_path.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(database_path,timeout=5.0,)
     connection.row_factory = sqlite3.Row
 

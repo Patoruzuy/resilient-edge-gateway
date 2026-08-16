@@ -25,7 +25,6 @@ log = logging.getLogger(__name__)
 
 class IngestionOutcome(str, Enum):
     """Possible outcome when processin a local MQTT publication. """
-
     INSERTED = "inserted"
     DUPLICATE = "duplicate"
     CONFLICT = "conflict"
@@ -40,7 +39,6 @@ class IngestionResult:
     Contains the mapped outcome, the topic, and optional identifiers or
     error details depending on the result.
     """
-
     outcome: IngestionOutcome
     topic: str
     message_id: str | None = None
@@ -86,8 +84,7 @@ def process_mqtt_publication(
     except sqlite3.Error as e:
         # Database faults must also not stop the MQTT loop.
         log.exception(
-            "SQLite error while storing telemetry: topic=%s"
-            "message_id=%s",
+            "SQLite error while storing telemetry: topic=%s message_id=%s",
             topic,
             message.message_id,
         )
@@ -106,7 +103,6 @@ def process_mqtt_publication(
 def _map_store_result(topic: str, result: StoreResult) -> IngestionResult:
     """
     Convert a repository StoreResult into an ingestion-level result.
-
     This keeps ingestion independent from repository internals and
     ensures consistent logging and outcome mapping.
     """
@@ -138,7 +134,6 @@ def _map_store_result(topic: str, result: StoreResult) -> IngestionResult:
 class GatewayIngestionService:
     """
     Receive telemetry from the local broker and store it.
-
     The SQLite connection is opened in the same thread that runs the blocking
     MQTT netwrok loop. This avoids sharing the connection between threads during
     the current single-process implementation.
@@ -187,8 +182,7 @@ class GatewayIngestionService:
 
         if result != mqtt.MQTT_ERR_SUCCESS:
             log.error(
-                "Unable to subscribe to local topic: filter=%s"
-                "result=%s",
+                "Unable to subscribe to local topic: filter=%s result=%s",
                 self._config.topic_filter,
                 result,
             )

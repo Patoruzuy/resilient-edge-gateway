@@ -244,3 +244,40 @@ TMA03 objectives:
 - EO1: measurement method implemented; formal controlled-recovery evaluation remains outstanding.
 - EO2: measurement foundation implemented; deliberate duplicate scenarios remain outstanding.
 - Supports later DO3 recovery evaluation.
+
+
+## 14/08/2026
+
+Branch:
+- `feat/duplicate-control`
+
+Completed:
+- Added persistent evidence for expected retransmissions and conflicting content.
+- Kept the existing idempotency key, payload hash and SQLite uniqueness constraint.
+- Confirmed that repeated or conflicting messages do not create another outbox row.
+- Added collector-side duplicate and conflict counts.
+- Completed automated and manual duplicate-control tests.
+
+Problems and corrections:
+- The initial collector duplicate test successfully stored the
+  upstream observation, but the reconciliation tool failed because it
+  assumed that every evaluation run has a publisher manifest.
+- The reconciliation run was written for complete publisher-to-collector
+  evaluation runs. DUP-03 publishes directly to the upstream broker to isolate
+  collector duplicate behaviour, so no publisher manifest exists for this test.
+- Added an agrument collector-only mode. This allows collector duplicate
+  evidence to be analysed without the publisher-manifest requirement.
+
+Evidence:
+- DUP-01 to DUP-04
+- `gateway_duplicate_observations`
+- collector run evidence
+- D008
+
+Outcome:
+- Duplicate control can now be measured at the gateway and evaluation collector.
+- DO4 remains implemented and EO2 remains in progress.
+- Collector duplicate observations can be analysed independently.
+
+Next:
+- `feat/stale-inflight-recovery`
