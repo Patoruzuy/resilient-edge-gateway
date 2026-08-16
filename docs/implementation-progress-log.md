@@ -4,10 +4,10 @@ This log records the main implementation changes, problems and evidence for the 
 
 ## 25/07/2026
 
-Branch:
+ **Branch:**
 - Initial database work
 
-Completed:
+ **Completed:**
 - Created SQLite database initialisation for the gateway outbox.
 - Enabled SQLite Write-Ahead Logging (WAL).
 - Added the uniqueness constraint used by the idempotency key.
@@ -15,7 +15,7 @@ Completed:
 Problem:
 - Duplicate inserts were not yet classified cleanly.
 
-Outcome:
+ **Outcome:**
 - The basic local persistence structure was created, but duplicate control still needed repository-level handling.
 
 TMA03 objectives:
@@ -24,27 +24,27 @@ TMA03 objectives:
 
 ## 01/08/2026
 
-Branch:
+ **Branch:**
 - `feat/baseline-message-contract`
 
 Commit:
 - `feat(contract): define telemetry message validation and hashing`
 
-Completed:
+ **Completed:**
 - Defined the telemetry message fields agreed in TMA03.
 - Added validation for required fields, identifiers, sequence values, timestamps and payload content.
 - Normalised source timestamps to Coordinated Universal Time (UTC).
 - Added canonical JSON handling and SHA-256 payload hashing.
 - Added tests for valid messages, missing fields, timestamp handling and equivalent payload hashes.
 
-Problems and corrections:
+ **Problems and corrections:**
 - Minor typing and test-data errors were found during the first test runs and corrected.
 
-Outcome:
+ **Outcome:**
 - The telemetry contract and validation path were implemented.
 - Canonical payload hashing provided the basis for later duplicate control.
 
-Evidence:
+ **Evidence:**
 - `models.py`
 - `validation.py`
 - `test_validation.py`
@@ -57,10 +57,10 @@ TMA03 objectives:
 
 ## 02/08/2026
 
-Branch:
+ **Branch:**
 - `feat/sqlite-outbox`
 
-Completed:
+ **Completed:**
 - Configured the gateway database to use SQLite WAL.
 - Enabled foreign-key checks for each connection.
 - Added execution of `schema.sql` during database initialisation.
@@ -68,18 +68,18 @@ Completed:
 - Implemented durable outbox insertion and duplicate/conflict classification.
 - Confirmed that committed records remain available after reopening the database.
 
-Problems and corrections:
+ **Problems and corrections:**
 - Mixed indentation caused errors in `database.py`.
 - The schema path used by tests was unreliable.
 - The database initially opened without executing `schema.sql`.
 - Several repository fields were missing from the first schema version.
 - These issues were corrected without changing the TMA03 message model or durable delivery states.
 
-Outcome:
+ **Outcome:**
 - Local persistence through the SQLite WAL outbox became stable and testable.
 - Expected retransmissions and conflicting content could be distinguished without creating additional outbox rows.
 
-Evidence:
+ **Evidence:**
 - `database.py`
 - `repository.py`
 - `schema.sql`
@@ -92,13 +92,13 @@ TMA03 objectives:
 
 ## 03/08/2026 to 07/08/2026
 
-Branch:
+ **Branch:**
 - `feat/gateway-ingestion`
 
 Commit:
 - `feat(ingestion): persist local MQTT telemetry`
 
-Completed:
+ **Completed:**
 - Added configuration for the local Mosquitto broker.
 - Subscribed to `telemetry/#` using MQTT Quality of Service (QoS) 1.
 - Connected the MQTT callback to message validation and SQLite persistence.
@@ -106,19 +106,19 @@ Completed:
 - Added outcomes for inserted, duplicate, conflict and rejected messages.
 - Completed automated tests and a real local Mosquitto smoke test.
 
-Problems and corrections:
+ **Problems and corrections:**
 - Some result fields were initially required even when a rejected message had no row or message identifier.
 - One test helper returned bytes that were not valid JSON.
 - The result model and test data were corrected.
 
-Outcome:
+ **Outcome:**
 - The local ingestion path became operational:
 
   `publisher → local broker → local-first edge gateway → SQLite WAL`
 
 - This demonstrated local persistence before any upstream publication was attempted.
 
-Evidence:
+ **Evidence:**
 - Passing ingestion tests
 - Gateway smoke-test log
 - SQLite row inspection
@@ -131,10 +131,10 @@ TMA03 objectives:
 
 ## 08/08/2026 to 09/08/2026
 
-Branch:
+ **Branch:**
 - `feat/upstream-publication`
 
-Completed:
+ **Completed:**
 - Added a separate MQTT client for publication to the upstream broker.
 - Selected one eligible `pending` record at a time to avoid introducing uncontrolled backlog replay before the controlled recovery slice.
 - Added the durable transitions:
@@ -147,7 +147,7 @@ Completed:
 - Verified that the full telemetry identity is preserved during upstream publication.
 - Completed a real Mosquitto smoke test on `localhost:1884`.
 
-Problems and corrections:
+ **Problems and corrections:**
 - A SQL syntax error prevented the first upstream tests from reaching MQTT publication.
 - `mark_in_flight()` used the wrong timestamp variable name.
 - The empty-outbox path did not initially handle `fetchone()` returning `None`.
@@ -155,13 +155,13 @@ Problems and corrections:
 - `broker_port` was initially stored as a string instead of an integer.
 - Each issue was corrected and the affected tests were rerun.
 
-Outcome:
+ **Outcome:**
 - The gateway can now move a durably stored message to the upstream broker using QoS 1.
 - Broker acknowledgement is stored as `broker_acknowledged`.
 - Failed or uncertain publication remains durably available as `retry_wait`.
 - This is a prerequisite for controlled recovery, but DO3 is not yet implemented.
 
-Evidence:
+ **Evidence:**
 - `src/upstream.py`
 - Updated `src/repository.py`
 - `tools/publish_pending.py`
@@ -177,10 +177,10 @@ TMA03 objectives:
 
 ## 09/08/2026 to 14/08/2026
 
-Branch:
+ **Branch:**
 - `feat/evaluation-collector`
 
-Completed:
+ **Completed:**
 - Added an independent MQTT evaluation collector connected to the upstream broker.
 - Kept evaluation evidence in `data/evaluation.db`, separate from gateway operational state in `data/gateway.db`.
 - Reused the existing Python database and repository modules to avoid unnecessary file duplication.
@@ -194,7 +194,7 @@ Completed:
 - Produced a publisher output and reconciled publisher, gateway and collector evidence.
 - Calculated baseline delivery completeness from unique expected identities.
 
-Problems and corrections:
+ **Problems and corrections:**
 - The first repeated-observation test referenced a missing test helper.
 - Collector persistence initially expected `payload_hash` to be part of `TelemetryMessage`, although the project treats it as derived evidence.
 - The collector was changed to calculate the hash using the existing canonical payload-hash function.
@@ -213,13 +213,13 @@ Baseline evidence for `baseline-050-001`:
 - Unexpected collector identities: 0
 - Baseline delivery completeness: 100.0%
 
-Outcome:
+ **Outcome:**
 - The baseline publisher-to-collector measurement path is complete under normal, unimpaired local network conditions.
 - Broker acknowledgement and collector observation are kept as separate evidence.
 - Publisher, gateway and collector records can now be reconciled using telemetry identity and payload hash.
 - The 100.0% result is a baseline only. It does not demonstrate resilience under intermittent connectivity.
 
-Evidence:
+ **Evidence:**
 - `evidence/baseline-050-001/publisher_output.csv`
 - `evidence/baseline-050-001/reconciliation.csv`
 - `evidence/baseline-050-001/summary.json`
@@ -235,7 +235,7 @@ Limitations:
 - Link-stability detection and bounded backlog replay remain outstanding.
 - Formal impairment-based evaluation under intermittent connectivity has not yet begun.
 
-Next action:
+ **Next:**
 - Complete and merge `feat/evaluation-collector`.
 - Begin `feat/duplicate-control`.
 - Use the existing publisher and collector evidence to measure expected retransmissions, conflicting content and collector-side duplicate arrival.
@@ -248,17 +248,17 @@ TMA03 objectives:
 
 ## 14/08/2026
 
-Branch:
+ **Branch:**
 - `feat/duplicate-control`
 
-Completed:
+ **Completed:**
 - Added persistent evidence for expected retransmissions and conflicting content.
 - Kept the existing idempotency key, payload hash and SQLite uniqueness constraint.
 - Confirmed that repeated or conflicting messages do not create another outbox row.
 - Added collector-side duplicate and conflict counts.
 - Completed automated and manual duplicate-control tests.
 
-Problems and corrections:
+ **Problems and corrections:**
 - The initial collector duplicate test successfully stored the
   upstream observation, but the reconciliation tool failed because it
   assumed that every evaluation run has a publisher manifest.
@@ -268,16 +268,59 @@ Problems and corrections:
 - Added an agrument collector-only mode. This allows collector duplicate
   evidence to be analysed without the publisher-manifest requirement.
 
-Evidence:
+ **Evidence:**
 - DUP-01 to DUP-04
 - `gateway_duplicate_observations`
 - collector run evidence
 - D008
 
-Outcome:
+ **Outcome:**
 - Duplicate control can now be measured at the gateway and evaluation collector.
 - DO4 remains implemented and EO2 remains in progress.
 - Collector duplicate observations can be analysed independently.
 
-Next:
+ **Next:**
 - `feat/stale-inflight-recovery`
+
+
+## 16/08/2026
+
+**Branch:**
+`feat/stale-inflight-recovery`
+
+**Completed:**
+- Added a configurable timeout for identifying stale `in_flight` records.
+- Added repository recovery that moves stale records to `retry_wait`.
+- Recovery does not increase `attempt_count` because no new publication attempt is made.
+- Recent `in_flight` records remain unchanged.
+- `pending`, `retry_wait` and `broker_acknowledged` records are unaffected.
+- Added stale recovery when the baseline upstream publication tool starts.
+- Kept `retry_wait` replay outside this slice so that it can be handled by controlled recovery.
+- Added automated tests for stale records, recent attempts, unaffected states and recovery after database reopening.
+- Completed a manual recovery smoke test using the real gateway database.
+
+**Problems and corrections:**
+- REC-01: Passed
+- REC-02: Passed
+- REC-03: Passed
+- REC-04: Passed
+- REC-05 manual test: Passed
+- Complete automated test suite: Passed
+
+**Evidence:**
+- `stale-smoke-001` was stored as `pending`.
+- The interrupted state was simulated as `in_flight` with one publication attempt.
+- After restart, one stale `in_flight` record was detected.
+- The record moved to `retry_wait`.
+- `attempt_count` remained 1.
+- `acknowledged_at` remained unset.
+- The baseline publisher did not replay the recovered record and instead selected another `pending` message.
+
+**Outcome:**
+- An interrupted durable publication attempt no longer remains permanently stranded in `in_flight`.
+- Local persistence now supports recovery to a durable retry state after restart.
+- The recovered message is not automatically replayed, preserving the boundary between stale recovery and controlled recovery.
+- DO3 is in progress. Link-stability detection and bounded backlog replay remain outstanding.
+
+**Next:**
+- Begin `feat/controlled-recovery`.

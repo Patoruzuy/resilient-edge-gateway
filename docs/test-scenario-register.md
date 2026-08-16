@@ -202,7 +202,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 ### UP-05: Real upstream Mosquitto publication
 
-**Purpose:** Confirm baseline publication to a real upstream broker before controlled recovery is added.
+**Purpose:** Confirm the publication to a real upstream broker before controlled recovery is added.
 
 **Configuration:** `localhost:1884`, QoS 1, topic `telemetry/sensor-001`, no NetEm impairment.
 
@@ -318,3 +318,84 @@ This register records the main tests used to support the TMA03 objectives. Detai
 **Conclusion:** The baseline measurement path works under normal, unimpaired conditions. The result validates the method used to calculate delivery completeness but does not demonstrate resilience under intermittent connectivity. Formal controlled-recovery and impairment-based evaluation remain outstanding.
 
 **Objectives:** EO1 measurement foundation, EO2 measurement foundation
+
+## Recovery
+
+### REC-01: Stale `in_flight` recovery
+
+**Purpose:** Confirm that an old unfinished upstream publication becomes eligible for later recovery.
+
+**Expected:** a stale `in_flight` record moves to `retry_wait`, `attempt_count` remains unchanged and no acknowledgement timestamp is added.
+
+**Actual:** Passed.
+
+**Evidence:** `test_stale_in_flight_message_moves_to_retry_wait`.
+
+**Objectives:** DO3
+
+### REC-02: Recent `in_flight` protection
+
+**Purpose:** Confirm that recovery does not reset an upstream publication attempt that may still be active.
+
+**Expected:** a recent `in_flight` record remains `in_flight` and its attempt count is unchanged.
+
+**Actual:** Passed.
+
+**Evidence:** `test_recent_in_flight_message_is_not_reset`.
+
+**Objectives:** DO3
+
+### REC-03: Other delivery states remain unchanged
+
+**Purpose:** Confirm that stale recovery only affects qualifying `in_flight` records.
+
+**Expected:** records already in `pending`, `retry_wait` or `broker_acknowledged` remain unchanged.
+
+**Actual:** Passed.
+
+**Evidence:** `test_stale_recovery_does_not_change_other_states`.
+
+**Objectives:** DO3
+
+### REC-04: Recovery after database reopening
+
+**Purpose:** Confirm that local persistence allows an interrupted publication attempt to be recovered after the gateway database is closed and reopened.
+
+**Expected:** the durable `in_flight` state survives reopening and, once considered stale, moves to `retry_wait` without increasing `attempt_count`.
+
+**Actual:** Passed.
+
+**Evidence:** `test_stale_in_flight_recovery_survives_database_reopening`.
+
+**Objectives:** DO2, DO3
+
+### REC-05: Manual stale `in_flight` recovery
+
+**Purpose:** Confirm the stale recovery path using the real gateway database and upstream publication tool.
+
+**Configuration:**
+- Message: `stale-smoke-001`
+- Upstream broker: `localhost:1884`
+- Stale timeout: configured gateway value
+- No NetEm impairment
+
+**Expected:** the stored message moves from `in_flight` to `retry_wait` after restart, without increasing its attempt count or publishing it again.
+
+**Actual:** Passed.
+
+**Observed:**
+- `stale-smoke-001` was initially persisted as `pending`.
+- The interrupted publication state was simulated as `in_flight` with `attempt_count = 1`.
+- After the gateway process was stopped, `publish_pending.py` detected one stale `in_flight` record.
+- `stale-smoke-001` moved to `retry_wait`.
+- `attempt_count` remained 1.
+- `acknowledged_at` remained empty.
+- No `in_flight` row remained for the message.
+- One `retry_wait` row remained.
+- The publisher selected a different `pending` message rather than replaying `stale-smoke-001`.
+
+**Conclusion:** local persistence prevented the interrupted record from being lost. Replay of `retry_wait` records remains separate from this slice.
+
+**Evidence:** gateway runtime log, `publish_pending.py` log and `gateway.db` queries.
+
+**Objectives:** DO2, DO3
