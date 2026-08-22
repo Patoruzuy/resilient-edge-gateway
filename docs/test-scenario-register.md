@@ -2,6 +2,7 @@
 
 This register records the main tests used to support the TMA03 objectives. Detailed debugging history is kept in the implementation progress log.
 
+
 ## Database, validation and ingestion
 
 ### DB-01: Database initialisation
@@ -16,6 +17,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO2
 
+
 ### DB-02: Persistence after reopening
 
 **Purpose:** Confirm that a committed outbox record remains available after closing and reopening the database.
@@ -28,6 +30,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO2
 
+
 ### VAL-01: Valid telemetry message
 
 **Purpose:** Confirm that a valid telemetry message is accepted and normalised.
@@ -37,6 +40,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 **Actual:** Passed.
 
 **Objectives:** DO1
+
 
 ### VAL-02: Malformed telemetry rejection
 
@@ -48,6 +52,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO1
 
+
 ### ING-01: Valid local MQTT ingestion
 
 **Purpose:** Confirm that a valid local MQTT publication is validated and committed to the SQLite WAL outbox.
@@ -58,6 +63,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO1, DO2
 
+
 ### ING-02: Invalid local MQTT ingestion
 
 **Purpose:** Confirm that malformed telemetry received through MQTT does not enter the durable outbox.
@@ -67,6 +73,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 **Actual:** Passed.
 
 **Objectives:** DO1
+
 
 ## Outbox and duplicate control
 
@@ -80,6 +87,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO2
 
+
 ### OUTBOX-02: Identical retransmission
 
 **Purpose:** Confirm that the same idempotency key and payload hash is treated as an expected retransmission duplicate.
@@ -91,6 +99,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 **Evidence:** duplicate-classification repository test and row-count assertion.
 
 **Objectives:** DO4
+
 
 ### OUTBOX-03: Conflicting message content
 
@@ -104,6 +113,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO4
 
+
 ### DUP-01: Expected retransmission evidence
 
 **Purpose:** Confirm that an expected retransmission is recorded as duplicate-control evidence as well as being rejected from the outbox.
@@ -115,6 +125,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 **Evidence:** repository duplicate test and `gateway_duplicate_observations`.
 
 **Objectives:** DO4
+
 
 ### DUP-02: Data-integrity anomaly evidence
 
@@ -128,6 +139,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO4
 
+
 ### DUP-03: Collector repeated observation count
 
 **Purpose:** Confirm that repeated observations remain visible at the evaluation collector and can be counted independently from gateway duplicate control.
@@ -140,6 +152,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** EO2 foundation
 
+
 ### DUP-04: Collector conflicting observation
 
 **Purpose:** Confirm that the collector can identify two observations with the same stable identity but different payload content.
@@ -151,6 +164,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 **Evidence:** collector conflicting-observation test and payload-hash comparison.
 
 **Objectives:** EO2 foundation
+
 
 ## Upstream publication
 
@@ -166,6 +180,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO2, foundation for EO1
 
+
 ### UP-02: Immediate upstream publication failure
 
 **Purpose:** Confirm that an immediate MQTT publication failure does not become `broker_acknowledged`.
@@ -177,6 +192,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 **Evidence:** `test_publish_error_moves_message_to_retry_wait`.
 
 **Objectives:** DO2, prerequisite for DO3
+
 
 ### UP-03: Upstream acknowledgement timeout
 
@@ -190,6 +206,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO2, prerequisite for DO3, foundation for EO2
 
+
 ### UP-04: Empty pending outbox
 
 **Purpose:** Confirm that no publication is attempted when no `pending` record exists.
@@ -199,6 +216,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 **Actual:** Passed.
 
 **Objectives:** DO2
+
 
 ### UP-05: Real upstream Mosquitto publication
 
@@ -214,7 +232,9 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO2, prerequisite for DO3, foundation for EO1
 
+
 ## Evaluation collector
+
 
 ### EVAL-DB-01: Evaluation database initialisation
 
@@ -226,6 +246,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** foundation for EO1 and EO2
 
+
 ### COL-01: Valid collector observation persistence
 
 **Purpose:** Confirm that a valid upstream observation is stored with run identifier, receipt timestamp, telemetry identity and payload hash.
@@ -235,6 +256,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 **Evidence:** collector repository tests and `collector_observations` inspection.
 
 **Objectives:** EO1 foundation
+
 
 ### COL-02: Repeated collector observations are preserved
 
@@ -248,6 +270,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** EO2 foundation
 
+
 ### COL-LIVE-01: Real upstream collector subscription
 
 **Purpose:** Confirm that the evaluation collector can connect to the real upstream broker and subscribe to the telemetry topic.
@@ -257,6 +280,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 **Actual:** Passed. Mosquitto accepted the collector connection and subscription.
 
 **Objectives:** EO1 foundation
+
 
 ## End-to-end evidence
 
@@ -275,6 +299,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 **Conclusion:** Broker acknowledgement and collector observation are independently represented.
 
 **Objectives:** EO1 and EO2 foundation
+
 
 ### E2E-02: Known-set baseline reconciliation
 
@@ -319,9 +344,10 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** EO1 measurement foundation, EO2 measurement foundation
 
-## Recovery
 
-### REC-01: Stale `in_flight` recovery
+## Stale `in_flight` recovery
+
+### REC-01: Stale attempt recovery
 
 **Purpose:** Confirm that an old unfinished upstream publication becomes eligible for later recovery.
 
@@ -333,7 +359,8 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO3
 
-### REC-02: Recent `in_flight` protection
+
+### REC-02: Recent attempt protection
 
 **Purpose:** Confirm that recovery does not reset an upstream publication attempt that may still be active.
 
@@ -344,6 +371,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 **Evidence:** `test_recent_in_flight_message_is_not_reset`.
 
 **Objectives:** DO3
+
 
 ### REC-03: Other delivery states remain unchanged
 
@@ -357,6 +385,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO3
 
+
 ### REC-04: Recovery after database reopening
 
 **Purpose:** Confirm that local persistence allows an interrupted publication attempt to be recovered after the gateway database is closed and reopened.
@@ -369,7 +398,8 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO2, DO3
 
-### REC-05: Manual stale `in_flight` recovery
+
+### REC-05: Manual stale-recovery smoke test
 
 **Purpose:** Confirm the stale recovery path using the real gateway database and upstream publication tool.
 
@@ -399,3 +429,167 @@ This register records the main tests used to support the TMA03 objectives. Detai
 **Evidence:** gateway runtime log, `publish_pending.py` log and `gateway.db` queries.
 
 **Objectives:** DO2, DO3
+
+
+## Controlled recovery
+
+### CR-01: Link-stability time
+
+**Purpose:** Confirm that backlog recovery does not begin immediately
+after the upstream connection becomes available or after stability has
+been lost.
+
+**Configuration:** Use a configurable link-stability interval and a controllable MQTT
+client state.
+
+**Expected:** the upstream path must remain connected for the configured
+stability period before recovery becomes eligible. The stability
+condition is reset after a disconnect or failed publication.
+
+**Actual:** Passed.
+
+**Evidence:** `test_stability_period_is_required_before_recovery`.
+
+**Objectives:** DO3
+
+
+### CR-02: QoS 1 health publication
+
+**Purpose:** Confirm that a stable connection is checked with a dedicated
+QoS 1 health publication before telemetry backlog is released.
+
+**Expected:** an acknowledged health publication allows recovery. A
+failed or uncertain health publication prevents the batch from starting.
+
+**Actual:** Passed.
+
+**Evidence:** `test_health_probe_requires_qos1_acknowledgement`.
+
+**Objectives:** DO3
+
+
+### CR-03: Recovery eligibility and stream ordering
+
+**Purpose:** Confirm that `pending` and `retry_wait` records can be
+selected while `in_flight` and `broker_acknowledged` records are
+excluded.
+
+**Expected:** source sequence remains ordered within each
+`device_id + publisher_session_id` stream.
+
+**Actual:** Passed.
+
+**Evidence:** `test_recovery_selects_pending_and_retry_wait_in_stream_order`
+
+**Objectives:** DO3
+
+
+### CR-04: Bounded backlog replay
+
+**Purpose:** Confirm that one recovery cycle releases no more than the
+configured batch size.
+
+**Expected:** with more eligible records than the batch limit, only one
+bounded batch is attempted before the next path check.
+
+**Actual:** Passed.
+
+**Evidence:** `test_recovery_batch_is_bounded`.
+
+**Objectives:** DO3, foundation for EO3
+
+
+### CR-05: Failure stops the current batch
+
+**Purpose:** Confirm that controlled recovery does not continue releasing
+backlog after connectivity becomes uncertain.
+
+**Expected:** an unsuccessful record returns to `retry_wait`, later
+records remain unattempted, and the current batch stops.
+
+**Actual:** Passed.
+
+**Evidence:** `test_publication_failure_stops_current_batch`.
+
+**Objectives:** DO2, DO3, foundation for EO2
+
+
+### CR-06: Recovery resumes after another interruption
+
+**Purpose:** Confirm that a message left in `retry_wait` can be attempted
+again after a later stable period.
+
+**Expected:** the later attempt increments `attempt_count` and can reach
+`broker_acknowledged` if the upstream broker confirms the publication.
+
+**Actual:** Passed.
+
+**Evidence:** `test_recovery_can_resume_after_failure`.
+
+**Objectives:** DO3, foundation for EO2 and EO3
+
+
+### CR-07: Limited priority without starvation
+
+**Purpose:** Confirm that priority can influence bounded replay without
+breaking source order or indefinitely blocking older backlog.
+
+**Expected:** most selections continue to favour old eligible records,
+while limited priority positions can select a higher-priority stream
+head.
+
+**Actual:** Passed.
+
+**Evidence:** `test_limited_priority_slot_does_not_break_device_order`.
+
+**Objectives:** DO3
+
+
+### CR-08: Manual controlled-recovery smoke test
+
+**Purpose:** Confirm controlled backlog replay against a real upstream
+Mosquitto broker.
+
+**Configuration:**
+
+- Upstream broker: `localhost:1884`
+- Link-stability period: 5 seconds
+- Replay batch size: 10
+- Health topic: `gateway/health`
+- Backlog: 12 telemetry messages
+- Two messages initially in `retry_wait`
+- Ten messages initially in `pending`
+- No NetEm impairment
+
+**Expected:** recovery starts only after the upstream connection has
+remained stable and a QoS 1 health publication has been acknowledged.
+Eligible telemetry is then released in bounded batches while source
+order is preserved.
+
+**Actual:** Passed.
+
+**Observed:**
+- Twelve messages were persevered for one device and publisher session.
+- Source sequences 1 and 2 were placed in `retry_wait` with
+  `attempt_count = 1`; sequences 3 to 12 remained `pending`.
+- The upstream connection remained available for approximately 5
+  seconds before the first health probe and telemetry recovery.
+- Two QoS 1 publications were observed on `gateway/health`.
+- The first recovery batch acknowledged ten telemetry messages.
+- The second recovery batch acknowledged the remaining two messages.
+- Telemetry arrived in source-sequence order from 1 to 12.
+- The two `retry_wait` records completed with `attempt_count = 2`.
+- The other 10 records completed with `attempt_count = 1`.
+- All twelve records finished as `broker_acknowledged`.
+- No `pending`, `retry_wait` or `in_flight` record remained for the
+  test session.
+
+**Conclusion:** controlled recovery released the durable backlog in
+bounded batches after link stability had been established. Durable
+retry state, source ordering and broker acknowledgement were preserved.
+
+**Evidence:** Mosquitto broker log, `gateway/health` subscriber,
+`telemetry/#` subscriber, controlled-recovery runtime log and
+`gateway.db` queries.
+
+**Objectives:** DO3; foundation for EO2 and EO3

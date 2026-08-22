@@ -229,12 +229,6 @@ Baseline evidence for `baseline-050-001`:
 - Passing automated test suite
 - Decision D007
 
-Limitations:
-- Formal duplicate-control evaluation has not yet been completed.
-- Stale `in_flight` recovery remains outstanding.
-- Link-stability detection and bounded backlog replay remain outstanding.
-- Formal impairment-based evaluation under intermittent connectivity has not yet begun.
-
  **Next:**
 - Complete and merge `feat/evaluation-collector`.
 - Begin `feat/duplicate-control`.
@@ -300,10 +294,7 @@ TMA03 objectives:
 - Completed a manual recovery smoke test using the real gateway database.
 
 **Problems and corrections:**
-- REC-01: Passed
-- REC-02: Passed
-- REC-03: Passed
-- REC-04: Passed
+- REC-01 to REC-04: Passed
 - REC-05 manual test: Passed
 - Complete automated test suite: Passed
 
@@ -324,3 +315,68 @@ TMA03 objectives:
 
 **Next:**
 - Begin `feat/controlled-recovery`.
+
+
+## 17/08/2026
+
+**Branch:**
+- `feat/controlled-recovery`
+
+**Implementation slice:**
+- Controlled recovery after intermittent connectivity
+
+**Completed:**
+- Added a configurable link-stability period before recovery begins.
+- Added a dedicated QoS 1 health publication on `gateway/health`.
+- Kept health publications outside the telemetry evidence path.
+- Made both `pending` and `retry_wait` records eligible for controlled
+  recovery.
+- Preserved source order within each device and publisher session.
+- Added bounded backlog replay.
+- Added limited priority handling without allowing later messages to
+  bypass earlier records from the same stream.
+- Added failure handling that returns an uncertain publication to
+  `retry_wait` and stops the current recovery batch.
+- Confirmed that durable recovery can resume after a later stable
+  connection.
+- Centralised telemetry-envelope serialisation so baseline and recovery
+  publication use the same message format.
+
+**Verification status:**
+- CR-01 to CR-07: Passed.
+- Full automated suite: Passed, 34 tests.
+- Real Mosquitto controlled-recovery smoke test: Passed
+
+**Manual verification:**
+
+- CR-08: Passed.
+- Twelve telemetry records were used.
+- Two records began in `retry_wait` and ten in `pending`.
+- The first recovery batch acknowledged ten messages.
+- A second health probe preceded the remaining recovery work.
+- The second batch acknowledged the final two messages.
+- All twelve messages were observed in source-sequence order.
+- All records finished as `broker_acknowledged`.
+- The two retransmitted records finished with `attempt_count = 2`.
+- No eligible or stranded record remained after recovery.
+
+**Outcome:**
+
+Controlled recovery is now implemented. The gateway can keep telemetry
+during interrupted upstream delivery and release the backlog in
+limited batches once the upstream path is stable and responsive.
+
+The implementation evidence shows the recovery mechanism under
+normal local conditions. Its behaviour under controlled delay, loss and
+outage conditions has not yet been evaluated.
+
+**Objectives:**
+
+- DO3: Implemented
+- EO2: In progress
+- EO3: Not yet evaluated
+
+**Next:**
+
+- Merge `feat/controlled-recovery`.
+- Begin `test/impairment-evaluation`.

@@ -9,11 +9,11 @@ This matrix links the TMA03 development and evaluation objectives to the current
 |---|---|---|
 | DO1 | Telemetry contract, validation, UTC timestamp normalisation and local MQTT ingestion are implemented and tested. | Implemented |
 | DO2 | SQLite WAL outbox, local persistence, durable delivery states and baseline upstream QoS 1 publication are implemented and tested. | Implemented |
-| DO3 | Stale `in_flight` recovery implemented; link-stability detection and bounded backlog replay remain outstanding | REC-01 to REC-05; later controlled-recovery and outage tests | In progress |
+| DO3 | Link-stability detection, QoS 1 health checking, stale-attempt recovery and bounded controlled backlog replay are implemented. Source order is preserved within each device and publisher session, with limited priority handling. | REC-01 to REC-05; CR-01 to CR-08; 34-test automated suite; controlled-recovery smoke test | Implemented |
 | DO4 | Composite idempotency key, uniqueness constraints and canonical payload-hash comparison classify expected duplicates and conflicting content. | Implemented |
 | EO1 | Run-specific publisher and collector evidence can now be reconciled. Baseline run `baseline-050-001` observed 50/50 expected messages with 100.0% delivery completeness. Formal controlled-recovery trials remain outstanding. | In progress |
-| EO2 | Gateway duplicate classification and collector duplicate evidence implemented; formal recovery duplicate evaluation remains outstanding | DUP-01 to DUP-04; later retransmission and controlled-recovery scenarios | In progress |
-| EO3 | Recovery timing fields exist, but backlog drain time has not yet been measured during controlled recovery. | Not started |
+| EO2 | Gateway and collector duplicate evidence are implemented; formal duplicate behaviour during impairment and recovery remains to be measured. | DUP-01 to DUP-04; CR-05, CR-06 and CR-08; later impairment runs | In progress |
+| EO3 | Controlled backlog recovery is implemented, but backlog drain time has not yet been measured under controlled impairment. | CR-04 and CR-08 provide implementation evidence; formal impairment runs pending | Exploratory only |
 | EO4 | SQLite persistence is operational, but formal storage behaviour measurements during longer outages have not yet been collected. | Not started |
 | EO5 | Linux `tc` and NetEm have been checked during exploratory work. Formal impairment-based evaluation has not yet begun. | Exploratory only |
 

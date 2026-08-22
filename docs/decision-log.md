@@ -239,3 +239,75 @@ the existing outbox design.
 
 This slice confirms that duplicate control can be measured. It does not
 yet evaluate duplicates produced during controlled recovery.
+
+
+## D009: Stale `in_flight` recovery
+
+Date: 17/08/2026  
+Status: Accepted
+
+### Decision
+
+Treat an `in_flight` record as stale when its last attempt is older than
+the configured timeout.
+
+At startup, stale records are changed atomically:
+
+`in_flight` to `retry_wait`
+
+This recovery step does not increase `attempt_count`.
+
+### Reason
+
+The gateway may stop after an upstream publication has started but
+before the broker acknowledgement is stored in SQLite. Without recovery,
+the record could remain stranded in `in_flight`.
+
+Moving it to `retry_wait` keeps the earlier attempt visible and makes the
+message eligible for controlled recovery.
+
+### Limitation
+
+The upstream broker may already have accepted the earlier publication.
+A later retry can therefore create a repeated delivery. This is expected
+under at-least-once recovery and is measured through the duplicate
+evidence rather than hidden.
+
+
+## D010: Link-stability gate and bounded recovery
+
+Date: 19/08/2026  
+Status: Accepted
+
+### Decision
+
+Controlled recovery starts only after the upstream MQTT connection has
+remained active for the configured stability period and a QoS 1 health
+publication on `gateway/health` has been acknowledged.
+
+`pending` and `retry_wait` records are then released in bounded batches.
+
+A full stability period is required when recovery starts or after a
+publication or health check fails. Between successful batches, the
+gateway uses the configured pause and another health publication rather
+than repeating the complete stability delay.
+
+Source sequence is preserved within each device and publisher session.
+Limited priority positions allow priority to influence replay without
+indefinitely starving older backlog.
+
+### Reason
+
+A short MQTT reconnection may fail again immediately. The stability gate
+and health acknowledgement give recovery a simple entry condition, while
+bounded batches prevent the complete backlog from being released as one
+burst.
+
+Repeating the complete stability delay after every successful batch was
+not used because it would add artificial delay to backlog drain time.
+
+### Limitation
+
+The selected stability period, batch size, pause and priority policy can
+affect recovery time. They are implementation settings, not claimed to
+be optimal, and will be examined during impairment-based evaluation.
