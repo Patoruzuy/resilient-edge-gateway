@@ -71,7 +71,7 @@ def _require_non_negative_integer(data: Mapping[str, Any], field_name: str) -> i
     if value < 0:
         raise MessageValidationError(
             "integer_out_of_range",
-            f"{field_name} must be at least {minimum},",
+            f"{field_name} must be at least 0,",
         )
     return value
 
@@ -146,6 +146,22 @@ def calculate_payload_hash(payload: Mapping[str, Any]) -> str:
     return hashlib.sha256(normalised_payload.encode("utf-8")).hexdigest()
 
 
+def serialise_telemetry_envelope(message: Mapping[str, Any]) -> str:
+    """
+    Serialise a complete telemetry message for MQTT publication.
+    """
+    envelope = {
+        "message_id": message.message_id,
+        "device_id": message.device_id,
+        "publisher_session_id": message.publisher_session_id,
+        "source_sequence": message.source_sequence,
+        "source_timestamp": message.source_timestamp,
+        "priority": message.priority,
+        "payload": json.loads(message.payload),
+    }
+    return normalised_payload_json(envelope)
+
+
 def parse_telemetry_message(raw_message: bytes | str | Mapping[str, Any]) -> TelemetryMessage:
     """
     Parse and validate telemetry messages from bytes, JSON string, or mapping.
@@ -157,7 +173,7 @@ def parse_telemetry_message(raw_message: bytes | str | Mapping[str, Any]) -> Tel
     if isinstance(raw_message, bytes):
         try:
             raw_message = raw_message.decode("utf-8")
-        except UncodeDecodeError as e:
+        except UnicodeDecodeError as e:
             raise MessageValidationError(
                 "invalid_encoding",
                 "MQTT payload must use UTF-8 encoding",

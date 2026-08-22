@@ -30,7 +30,6 @@ def stale_before_timestamp(timeout_seconds: float) -> str:
     threshold = datetime.now(timezone.utc) - timedelta(seconds=timeout_seconds)
     return threshold.isoformat(timespec="microseconds").replace("+00:00", "Z")
 
-
 def main() -> None:
     logging.basicConfig(
         level=logging.INFO,

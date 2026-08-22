@@ -4,7 +4,6 @@ output containing the expected message identities.
 """
 import argparse
 import csv
-import json
 import sys
 import threading
 import time
@@ -58,20 +57,13 @@ def main() -> None:
         client_id=f"publisher-{args.run_id}",
     )
 
-    def on_connect(
-        client,
-        userdata,
-        flags,
-        reason_code,
-        properties,
-    ):
+    def on_connect(client, userdata, flags, reason_code, properties):
         del client, userdata, flags, properties
 
         if reason_code == 0:
             connected.set()
 
     client.on_connect = on_connect
-
     client.connect(args.host, args.port, keepalive=60)
 
     client.loop_start()
@@ -114,20 +106,12 @@ def main() -> None:
                     "device_id": args.device_id,
                     "publisher_session_id": session_id,
                     "source_sequence": sequence,
-                    "source_timestamp": (
-                        source_timestamp
-                    ),
+                    "source_timestamp":source_timestamp,
                     "priority": 0,
                     "payload": payload,
                 }
 
-                wire_message = json.dumps(
-                    message,
-                    sort_keys=True,
-                    separators=(",", ":"),
-                    ensure_ascii=False,
-                    allow_nan=False,
-                )
+                wire_message = normalised_payload_json(message)
 
                 info = client.publish(
                     topic=args.topic,

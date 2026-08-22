@@ -1,7 +1,7 @@
 """
 Upstream publication for the local-first edge gateway.
 
-The module selects one durable pending outbox record, changes it to
+The module selects a single pending outbox record, changes it to
 in_flight, publishes it to the upstream broker at QoS 1 and stores the
 resulting durable state.
 """
@@ -23,14 +23,13 @@ from src.repository import (
     mark_in_flight,
     mark_retry_wait,
 )
-
+from src.validation import serialise_telemetry_envelope
 
 log = logging.getLogger(__name__)
 
 
 class PublicationOutcome(str, Enum):
     """Possible outcomes from one baseline publication attempt."""
-
     NO_PENDING = "no_pending"
     BROKER_ACKNOWLEDGED = "broker_acknowledged"
     RETRY_WAIT = "retry_wait"
@@ -39,7 +38,6 @@ class PublicationOutcome(str, Enum):
 @dataclass(frozen=True, slots=True)
 class PublicationResult:
     """Result of attempting to publish one durable outbox record."""
-
     outcome: PublicationOutcome
     row_id: int | None = None
     message_id: str | None = None
@@ -66,9 +64,7 @@ def publish_one_pending(
     if pending is None:
         log.info("No pending outbox messages are available.")
 
-        return PublicationResult(
-            outcome=PublicationOutcome.NO_PENDING,
-        )
+        return PublicationResult(outcome=PublicationOutcome.NO_PENDING)
 
     # Persist the beginning of the attempt before invoking the network
     # client. This makes the attempt visible after the interruption.
@@ -77,7 +73,7 @@ def publish_one_pending(
     try:
         message_info = client.publish(
             topic=pending.topic,
-            payload=serialise_upstream_message(pending),
+            payload=serialise_telemetry_envelope(pending),
             qos=qos,
             retain=False,
         )
@@ -107,10 +103,7 @@ def publish_one_pending(
     if message_info.rc != mqtt.MQTT_ERR_SUCCESS:
         mark_retry_wait(connection, pending.row_id)
 
-        detail = (
-            "MQTT publish returned error code "
-            f"{int(message_info.rc)}."
-        )
+        detail = f"MQTT publish returned error code {int(message_info.rc)}."
 
         log.warning(
             "Upstream publication was not queued: "
@@ -130,9 +123,7 @@ def publish_one_pending(
         )
 
     try:
-        message_info.wait_for_publish(
-            timeout=acknowledgement_timeout_seconds
-        )
+        message_info.wait_for_publish(timeout=acknowledgement_timeout_seconds)
 
     except (ValueError, RuntimeError) as exc:
         # The broker may or may not have accepted the publication.
@@ -160,13 +151,10 @@ def publish_one_pending(
     if not message_info.is_published():
         mark_retry_wait(connection, pending.row_id)
 
-        detail = (
-            "QoS 1 acknowledgement was not confirmed before timeout."
-        )
+        detail = "QoS 1 acknowledgement was not confirmed before timeout."
 
         log.warning(
-            "Upstream acknowledgement timed out: "
-            "row_id=%s message_id=%s mid=%s",
+            "Upstream acknowledgement timed out: row_id=%s message_id=%s mid=%s",
             pending.row_id,
             pending.message_id,
             mqtt_mid,
@@ -180,14 +168,10 @@ def publish_one_pending(
             detail=detail,
         )
 
-    mark_broker_acknowledged(
-        connection,
-        pending.row_id,
-    )
+    mark_broker_acknowledged(connection, pending.row_id)
 
     log.info(
-        "Upstream broker acknowledged publication: "
-        "row_id=%s message_id=%s mid=%s",
+        "Upstream broker acknowledged publication: row_id=%s message_id=%s mid=%s",
         pending.row_id,
         pending.message_id,
         mqtt_mid,
@@ -199,40 +183,6 @@ def publish_one_pending(
         message_id=pending.message_id,
         mqtt_mid=mqtt_mid,
     )
-
-def serialise_upstream_message(
-    pending: PendingOutboxMessage,
-) -> str:
-    """
-    Reconstruct the telemetry message for upstream publication.
-
-    The SQLite outbox stores message identity separately from the
-    payload. Creating the envelope keeps the identity information
-    that is required by the evaluation collector.
-    """
-
-    payload = json.loads(pending.payload)
-
-    envelope = {
-        "message_id": pending.message_id,
-        "device_id": pending.device_id,
-        "publisher_session_id": (
-            pending.publisher_session_id
-        ),
-        "source_sequence": pending.source_sequence,
-        "source_timestamp": pending.source_timestamp,
-        "priority": pending.priority,
-        "payload": payload,
-    }
-
-    return json.dumps(
-        envelope,
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=False,
-        allow_nan=False,
-    )
-
 
 class UpstreamMqttConnection:
     """
@@ -286,10 +236,7 @@ class UpstreamMqttConnection:
         self._connection_error = str(reason_code)
         self._connected.set()
 
-        log.error(
-            "Upstream broker rejected connection: reason=%s",
-            reason_code,
-        )
+        log.error("Upstream broker rejected connection: reason=%s", reason_code)
 
     def _on_disconnect(
         self,
@@ -307,10 +254,7 @@ class UpstreamMqttConnection:
         if reason_code == 0:
             log.info("Disconnected from upstream broker.")
         else:
-            log.warning(
-                "Unexpected upstream disconnection: reason=%s",
-                reason_code,
-            )
+            log.warning("Unexpected upstream disconnection: reason=%s", reason_code)
 
     def connect(self) -> None:
         """
