@@ -68,6 +68,16 @@ class UpstreamConfig:
     # reset while it might still be alive.
     stale_inflight_timeout_seconds: float = 30.0
 
+    link_stability_seconds: float = 5.0
+    # Priority is deliberately limited; I have implemented a simple policy
+    # because most selections drain the oldest backlog. so, every fifth selection
+    # is a priority opportunity
+    replay_batch_size: int = 10
+    replay_batch_pause_seconds: float = 0.5
+    # The health is outside the telemetry evidence. Different topic.
+    health_topic: str = "gateway/health"
+    health_acknowledgement_timeout_seconds: float = 5.0
+
     database_path: Path = Path("data/gateway.db") # The local storage
     schema_path: Path = Path("schema.sql") # SQL file schema
 
@@ -92,7 +102,14 @@ class UpstreamConfig:
         if self.stale_inflight_timeout_seconds <= self.acknowledgement_timeout_seconds:
             raise ValueError("stale_inflight_timeout_seconds must be longer "
                              "than acknowledgement_timeout_seconds")
-
+        if self.link_stability_seconds < 0:
+            raise ValueError("link_stability_seconds cannot be negative.")
+        if self.replay_batch_size <= 0:
+            raise ValueError("replay_batch_size must be positive.")
+        if self.replay_batch_pause_seconds < 0:
+            raise ValueError("replay_batch_pause_seconds cannot be negative.")
+        if not self.health_topic.strip():
+            raise ValueError("health_topic must not be empty.")
 
 
 @dataclass(frozen=True, slots=True)

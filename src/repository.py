@@ -55,6 +55,7 @@ class PendingOutboxMessage:
     topic: str
     payload: str
     attempt_count: int
+    delivery_state: str = "pending"
 
 @dataclass(frozen=True, slots=True)
 class GatewayDuplicateSummary:
@@ -178,9 +179,7 @@ def store_message(
         ).fetchone()
 
         if existing is not None:
-            stored_payload_hash = str(
-                existing["payload_hash"]
-            )
+            stored_payload_hash = str(existing["payload_hash"])
 
             if stored_payload_hash == payload_hash:
                 with connection:
@@ -230,7 +229,7 @@ def store_message(
 
         if existing is None:
             # The constraint failure was not caused by either expected
-            # uniqueness rule. Preserve the original database error.
+            # uniqueness rule. Keeps the original database error.
             raise
 
         same_identity = (
@@ -267,6 +266,21 @@ def store_message(
             message_id=str(existing["message_id"]),
         )
 
+def _outbox_message_from_row(row: sqlite3.Row) -> PendingOutboxMessage:
+    """Convert an outbox query result into the publication model."""
+    return PendingOutboxMessage(
+        row_id=int(row["id"]),
+        message_id=str(row["message_id"]),
+        device_id=str(row["device_id"]),
+        publisher_session_id=str(row["publisher_session_id"]),
+        source_sequence=int(row["source_sequence"]),
+        source_timestamp=str(row["source_timestamp"]),
+        priority=int(row["priority"]),
+        topic=str(row["topic"]),
+        payload=str(row["payload"]),
+        attempt_count=int(row["attempt_count"]),
+        delivery_state=str(row["delivery_state"]),
+    )
 
 def get_next_pending_message(
     connection: sqlite3.Connection,
@@ -287,7 +301,8 @@ def get_next_pending_message(
             priority,
             topic,
             payload,
-            attempt_count
+            attempt_count,
+            delivery_state
         FROM outbox_messages
         WHERE delivery_state = "pending"
         ORDER BY source_timestamp ASC, id ASC
@@ -298,18 +313,61 @@ def get_next_pending_message(
     if row is None:
         return None
 
-    return PendingOutboxMessage(
-        row_id=int(row["id"]),
-        message_id=str(row["message_id"]),
-        device_id=str(row["device_id"]),
-        publisher_session_id=str(row["publisher_session_id"]),
-        source_sequence=int(row["source_sequence"]),
-        source_timestamp=str(row["source_timestamp"]),
-        priority=int(row["priority"]),
-        topic=str(row["topic"]),
-        payload=str(row["payload"]),
-        attempt_count=int(row["attempt_count"]),
-    )
+    return _outbox_message_from_row(row)
+
+
+def get_next_recovery_message(
+    connection: sqlite3.Connection,
+    prefer_priority: bool = False,
+) -> PendingOutboxMessage | None:
+    """
+    Return one message eligible for controlled recovery.
+    Only pending and retry_wait records are eligible. A later source sequence
+    from the same device and publisher session is not selected while an earlier
+    record from that stream stays pending, retry_wait or in_flight.
+    """
+    row = connection.execute(
+        """
+        SELECT
+            current.id,
+            current.message_id,
+            current.device_id,
+            current.publisher_session_id,
+            current.source_sequence,
+            current.source_timestamp,
+            current.priority,
+            current.topic,
+            current.payload,
+            current.attempt_count,
+            current.delivery_state
+        FROM outbox_messages AS current
+        WHERE current.delivery_state IN ('pending', 'retry_wait')
+          AND NOT EXISTS (
+              SELECT 1
+              FROM outbox_messages AS earlier
+              WHERE earlier.device_id = current.device_id
+                AND earlier.publisher_session_id =
+                    current.publisher_session_id
+                AND earlier.source_sequence < current.source_sequence
+                AND earlier.delivery_state IN (
+                    'pending',
+                    'retry_wait',
+                    'in_flight'
+                )
+          )
+        ORDER BY
+            CASE WHEN ? THEN current.priority END DESC,
+            current.source_timestamp ASC,
+            current.id ASC
+        LIMIT 1
+        """,
+        (1 if prefer_priority else 0,),
+    ).fetchone()
+
+    if row is None:
+        return None
+
+    return _outbox_message_from_row(row)
 
 
 def _require_single_transition(
@@ -362,6 +420,45 @@ def mark_in_flight(
             target_state="in_flight",
         )
 
+def mark_recovery_in_flight(
+    connection: sqlite3.Connection,
+    row_id: int,
+    expected_state: str,
+) -> None:
+    """
+    Start a controlled-recovery publication attempt.
+    A recovery message may begin in pending or retry_wait. The in_flight
+    transition is committed before the MQTT publication.
+    """
+    if expected_state not in {"pending", "retry_wait"}:
+        raise ValueError(
+            "controlled recovery can only publish pending or retry_wait records"
+        )
+
+    now = utc_now()
+
+    with connection:
+        cursor = connection.execute(
+            """
+            UPDATE outbox_messages
+            SET
+                delivery_state = 'in_flight',
+                attempt_count = attempt_count + 1,
+                last_attempt_at = ?,
+                next_retry_at = NULL,
+                updated_at = ?
+            WHERE id = ?
+              AND delivery_state = ?
+            """,
+            (now, now, row_id, expected_state),
+        )
+
+        _require_single_transition(
+            cursor,
+            row_id=row_id,
+            expected_state=expected_state,
+            target_state="in_flight",
+        )
 
 def mark_broker_acknowledged(
     connection: sqlite3.Connection,
@@ -453,7 +550,6 @@ def recover_stale_in_flight(
         )
 
     return max(int(cursor.rowcount), 0)
-
 
 # Evaluation evidence operations
 
