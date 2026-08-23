@@ -1,0 +1,65 @@
+{
+  "notes": [
+    "TMA03 requires defined outage durations, varied message rates, larger samples and repeated runs, but does not prescribe exact numerical values.",
+    "The 100 ms delay and 10% loss condition reuses the exploratory TMA03 impairment setting.",
+    "Each condition is repeated three times.",
+    "Outage tets use post-publisher controlled recovery. Concurrent live forwarding during recovery is not claimed in these tests."
+  ],
+  "scenarios": [
+    {
+      "id": "DIRECT-BASE",
+      "path": "direct",
+      "message_count": 100,
+      "rate_hz": 5,
+      "delay_ms": 0,
+      "loss_pct": 0,
+      "outage_seconds": 0,
+      "repeats": 3,
+      "purpose": "Direct publisher-to-upstream reference for EO1."
+    },
+    {
+      "id": "GATEWAY-BASE",
+      "path": "gateway",
+      "message_count": 100,
+      "rate_hz": 5,
+      "delay_ms": 0,
+      "loss_pct": 0,
+      "outage_seconds": 0,
+      "repeats": 3,
+      "purpose": "Final gateway reference under baseline conditions."
+    },
+    {
+      "id": "DEG-100MS-10LOSS",
+      "path": "gateway",
+      "message_count": 100,
+      "rate_hz": 5,
+      "delay_ms": 100,
+      "loss_pct": 10,
+      "outage_seconds": 0,
+      "repeats": 3,
+      "purpose": "Gateway behaviour under controlled delay and packet loss."
+    },
+    {
+      "id": "OUT-15S-2HZ",
+      "path": "gateway",
+      "message_count": 100,
+      "rate_hz": 2,
+      "delay_ms": 0,
+      "loss_pct": 100,
+      "outage_seconds": 15,
+      "repeats": 3,
+      "purpose": "Short outage with moderate message generation followed by controlled backlog recovery."
+    },
+    {
+      "id": "OUT-30S-5HZ",
+      "path": "gateway",
+      "message_count": 200,
+      "rate_hz": 5,
+      "delay_ms": 0,
+      "loss_pct": 100,
+      "outage_seconds": 30,
+      "repeats": 3,
+      "purpose": "Longer outage with a larger durable backlog for EO3 and EO4."
+    }
+  ]
+}
