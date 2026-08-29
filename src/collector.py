@@ -13,17 +13,13 @@ from src.database import open_evaluation_database
 from src.repository import record_collector_observation, record_collector_rejection
 from src.validation import MessageValidationError, parse_telemetry_message
 
-
 log = logging.getLogger(__name__)
 
 
 class EvaluationCollector:
     """Collect independent evidence from the upstream MQTT broker."""
 
-    def __init__(
-        self,
-        config: CollectorConfig,
-    ) -> None:
+    def __init__(self, config: CollectorConfig) -> None:
         self._config = config
         self._connection: sqlite3.Connection | None = None
         self._client = mqtt.Client(
@@ -51,10 +47,7 @@ class EvaluationCollector:
                 )
             return
 
-        result, mid = client.subscribe(
-            self._config.topic_filter,
-            qos=self._config.qos,
-        )
+        result, mid = client.subscribe(self._config.topic_filter, qos=self._config.qos)
         if result != mqtt.MQTT_ERR_SUCCESS:
             log.error(
                 "Collector subscription failed: filter=%s result=%s",
@@ -80,8 +73,7 @@ class EvaluationCollector:
         del client, userdata
 
         if self._connection is None:
-            log.error("Collector message received before database initialisation."
-            )
+            log.error("Collector message received before database initialisation.")
             return
         try:
             telemetry = parse_telemetry_message(message.payload)
@@ -165,7 +157,6 @@ class EvaluationCollector:
             self._config.broker_host,
             self._config.broker_port,
         )
-
         try:
             self._client.connect(
                 host=self._config.broker_host,

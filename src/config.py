@@ -55,8 +55,8 @@ class UpstreamConfig:
     Configuration for publication to the upstream broker.
     This configuration supports one record at a time publication.
     """
-    broker_host: str = "localhost"
-    broker_port: str = 1884 # Standard MQTT port
+    broker_host: str = "172.24.96.1"
+    broker_port: int = 1883 # Standard MQTT port
     client_id: str = "edge-gateway-upstream"
     qos: int = 1 # QoS 1 for the local subscription and at-least-once delivery
     keepalive_seconds: int = 60 # Broker ping interval
@@ -125,6 +125,8 @@ class CollectorConfig:
     keepalive_seconds: int = 60 # Broker ping interval
     database_path: Path = Path("data/evaluation.db") # The local storage
     schema_path: Path = Path("evaluation_schema.sql") # SQL file schema
+    scenarios_path: Path = Path("evaluation/scenarios.json")
+    evidence_dir: Path = Path("evidence")
 
     def __post_init__(self) -> None:
         if not self.run_id.strip():
