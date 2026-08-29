@@ -17,7 +17,6 @@ import paho.mqtt.client as mqtt
 
 from src.config import UpstreamConfig
 from src.repository import (
-    PendingOutboxMessage,
     get_next_pending_message,
     mark_broker_acknowledged,
     mark_in_flight,

@@ -7,6 +7,7 @@ The retry_wait records are not replayed by this tool.
 """
 from datetime import datetime, timedelta, timezone
 import logging
+import argparse
 
 from src.config import UpstreamConfig, configure_logging
 from src.database import open_database
@@ -15,6 +16,12 @@ from src.upstream import UpstreamMqttConnection, publish_one_pending
 
 log = logging.getLogger(__name__)
 
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Publish one pending gateway message to the upstream broker."
+    )
+    return parser.parse_args()
 
 def stale_before_timestamp(timeout_seconds: float) -> str:
     """Return the UTC threshold used to identify stale attempts."""
@@ -25,6 +32,7 @@ def stale_before_timestamp(timeout_seconds: float) -> str:
     return threshold.isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 def main() -> None:
+    parse_args()
     configure_logging()
     config = UpstreamConfig()
 

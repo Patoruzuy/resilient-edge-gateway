@@ -9,6 +9,7 @@ another batch is attempted.
 from datetime import datetime, timedelta, timezone
 import logging
 import time
+import argparse
 
 from src.config import UpstreamConfig, configure_logging
 from src.controlled_recovery import (
@@ -23,6 +24,12 @@ from src.upstream import UpstreamMqttConnection
 log = logging.getLogger(__name__)
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Run controlled recovery of the durable MQTT backlog."
+    )
+    return parser.parse_args()
+
 def stale_before_timestamp(timeout_seconds: float) -> str:
     """Return the UTC threshold used to identify stale attempts."""
     if timeout_seconds <= 0:
@@ -32,8 +39,10 @@ def stale_before_timestamp(timeout_seconds: float) -> str:
 
 
 def main() -> None:
+    parse_args()
     configure_logging()
     config = UpstreamConfig()
+
     connection = open_database(
         database_path=config.database_path,
         schema_path=config.schema_path,
