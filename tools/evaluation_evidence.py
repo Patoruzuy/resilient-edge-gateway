@@ -160,13 +160,13 @@ def storage_counts(connection: sqlite3.Connection) -> dict[str, int]:
 def sample_storage(args: argparse.Namespace) -> None:
     """Append one storage and durable-state sample."""
     run_dir = is_run_dir(args.run_dir)
-    evidence_config = EvaluationConfig()
+    gateway_config = UpstreamConfig()
     impairment = json.loads((run_dir / "impairment.json").read_text(encoding="utf-8"))
 
     if impairment["path"] != "gateway":
         raise ValueError("Storage sampling is only used for gateway scenarios.")
 
-    database_path = evidence_config.database_path
+    database_path = gateway_config.database_path
     if not database_path.is_file():
         raise FileNotFoundError(f"Gateway database does not exist: {database_path}")
     # Opens the existing SQLite database without creating or changing it.

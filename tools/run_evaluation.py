@@ -17,13 +17,8 @@ if str(ROOT) not in sys.path:
 from src.database import open_database, open_evaluation_database
 from src.config import EvaluationConfig, UpstreamConfig
 
-upstream_config = UpstreamConfig()
 
-GATEWAY_DB = upstream_config.database_path
-SCHEMA_PATH = upstream_config.schema_path
-
-
-def parse_args() -> argparse.Namespace:
+def parse_args(upstream_config: UpstreamConfig) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Prepare one TM470 evaluation run.")
 
     parser.add_argument("--scenario", required=True)
@@ -63,9 +58,9 @@ def delete_database(path: Path) -> None:
         if candidate.exists():
             candidate.unlink()
 
-def create_gateway_database() -> None:
+def create_gateway_database(upstream_config: UpstreamConfig) -> None:
     """Create the normal gateway database from schema.sql."""
-    connection = open_database(GATEWAY_DB,SCHEMA_PATH)
+    connection = open_database(upstream_config.database_path, upstream_config.schema_path)
     connection.close()
 
 def create_evaluation_database(evaluation_config: EvaluationConfig) -> None:
@@ -73,14 +68,19 @@ def create_evaluation_database(evaluation_config: EvaluationConfig) -> None:
     connection = open_evaluation_database(evaluation_config.database_path, evaluation_config.schema_path)
     connection.close()
 
-def prepare_databases(scenario: dict, fresh: bool, evaluation_config: EvaluationConfig) -> None:
+def prepare_databases(
+        scenario: dict,
+        fresh: bool,
+        upstream_config: UpstreamConfig,
+        evaluation_config: EvaluationConfig,
+    ) -> None:
     """Create the databases required by the selected scenario."""
     if fresh:
-        delete_database(GATEWAY_DB)
+        delete_database(upstream_config.database_path)
         delete_database(evaluation_config.database_path)
     if scenario["path"] == "gateway":
-        if not GATEWAY_DB.exists():
-            create_gateway_database()
+        if not upstream_config.database_path.exists():
+            create_gateway_database(upstream_config)
     if not evaluation_config.database_path.exists():
         create_evaluation_database(evaluation_config)
 
@@ -100,7 +100,12 @@ def initialise_evidence(args: argparse.Namespace) -> None:
     subprocess.run(command, check=True)
 
 
-def print_next_steps(args: argparse.Namespace,scenario: dict) -> None:
+def print_next_steps(
+        args: argparse.Namespace,
+        scenario: dict,
+        upstream_config: UpstreamConfig,
+        evaluation_config: EvaluationConfig,
+    ) -> None:
     """Print the small set of commands needed to continue the run."""
     interval_ms = round(1000 / float(scenario["rate_hz"]))
     if scenario["path"] == "direct":
@@ -118,15 +123,15 @@ def print_next_steps(args: argparse.Namespace,scenario: dict) -> None:
     print(f"Path:     {scenario['path']}")
     print(f"Messages: {scenario['message_count']}")
     print(f"Rate:     {scenario['rate_hz']} msg/s")
-    print(f"Evidence: evidence/{args.run_id}")
+    print(f"Evidence: {evaluation_config.evidence_dir / args.run_id}")
     print()
 
     if scenario["path"] == "gateway":
-        print("Gateway database: data/gateway.db")
+        print(f"Gateway database: {upstream_config.database_path}")
     else:
         print("Gateway is bypassed for this direct baseline.")
 
-    print("Evaluation database: data/evaluation.db")
+    print(f"Evaluation database: {evaluation_config.database_path}")
     print()
     print("Start the collector using this run ID.")
     print("Publisher command:")
@@ -150,12 +155,14 @@ def print_next_steps(args: argparse.Namespace,scenario: dict) -> None:
 
 
 def main() -> None:
-    args = parse_args()
+    upstream_config = UpstreamConfig()
     evaluation_config = EvaluationConfig()
+
+    args = parse_args(upstream_config)
     scenario = load_scenario(evaluation_config.scenarios_path, args.scenario)
-    prepare_databases(scenario,args.fresh, evaluation_config)
+    prepare_databases(scenario,args.fresh, upstream_config, evaluation_config)
     initialise_evidence(args)
-    print_next_steps(args,scenario)
+    print_next_steps(args,scenario, upstream_config, evaluation_config)
 
 if __name__ == "__main__":
     main()

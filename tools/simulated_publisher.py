@@ -15,7 +15,7 @@ if str(ROOT) not in sys.path:
 
 import paho.mqtt.client as mqtt
 
-from src.config import CollectorConfig
+from src.config import EvaluationConfig
 from src.repository import utc_now
 from src.validation import calculate_payload_hash, normalised_payload_json
 
@@ -42,7 +42,7 @@ def main() -> None:
 
     session_id = args.session_id or f"{args.run_id}-session-001"
 
-    evaluation_config = CollectorConfig(run_id=args.run_id)
+    evaluation_config = EvaluationConfig()
     evidence_dir = evaluation_config.evidence_dir / args.run_id
     evidence_dir.mkdir(parents=True, exist_ok=True)
     output_path = (evidence_dir / "publisher_output.csv")

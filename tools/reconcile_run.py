@@ -27,7 +27,7 @@ def parse_args() -> argparse.Namespace:
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument("--direct", action="store_true",
         help="Publisher and collector evidence for a direct-publication.")
-    parser.add_argument("--collector-only", action="store_true",
+    modes.add_argument("--collector-only", action="store_true",
         help="Print collector duplicate-control evidence only")
     parser.add_argument("--gateway-db", type=Path, default=None, help="Optional gateway database path.")
     parser.add_argument("--evaluation-db", type=Path, default=None, help="Optional evaluation database path.")
@@ -203,15 +203,15 @@ def main() -> None:
         finally:
             gateway.close()
 
-    gateway_by_key = {
-        stable_key(row): row
-        for row in gateway_rows
-        if stable_key(row) in expected
-    }
-    # filter the gateway duplicate evidence
-    for row in gateway_duplicate_rows:
-        if stable_key(row) in expected:
-            run_gateway_duplicates.append(row)
+        gateway_by_key = {
+            stable_key(row): row
+            for row in gateway_rows
+            if stable_key(row) in expected
+        }
+        # filter the gateway duplicate evidence
+        for row in gateway_duplicate_rows:
+            if stable_key(row) in expected:
+                run_gateway_duplicates.append(row)
 
     reconciliation = []
     collector_unique_matches = 0
