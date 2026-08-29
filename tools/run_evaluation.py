@@ -86,7 +86,7 @@ def initialise_evidence(args: argparse.Namespace) -> None:
     command = [
         sys.executable,
         "-m",
-        "tools/evaluation_evidence.py",
+        "tools.evaluation_evidence.py",
         "init",
         "--run-id", str(args.run_id),
         "--scenario", str(args.scenario),
@@ -133,7 +133,7 @@ def print_next_steps(
     print("Start the collector using this run ID.")
     print("Publisher command:")
     print(
-        f"{sys.executable} -m tools/simulated_publisher.py "
+        f"{sys.executable} -m tools.simulated_publisher.py "
         f"--run-id {args.run_id} "
         f"--count {scenario['message_count']} "
         f"--interval-ms {interval_ms} "
@@ -144,11 +144,11 @@ def print_next_steps(
 
     if scenario["path"] == "direct":
         print("Reconcile with:")
-        print(f"{sys.executable} -m tools/reconcile_run.py --run-id {args.run_id} --direct")
+        print(f"{sys.executable} -m tools.reconcile_run.py --run-id {args.run_id} --direct")
     else:
         print("Continue with the gateway, impairment and recovery")
         print("Reconcile with:")
-        print(f"{sys.executable} -m tools/reconcile_run.py --run-id {args.run_id}")
+        print(f"{sys.executable} -m tools.reconcile_run.py --run-id {args.run_id}")
 
 
 def main() -> None:
