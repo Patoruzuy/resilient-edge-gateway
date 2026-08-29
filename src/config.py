@@ -123,10 +123,6 @@ class CollectorConfig:
 
     client_id: str = "edge-gateway-evaluation-collector"
     keepalive_seconds: int = 60 # Broker ping interval
-    database_path: Path = Path("data/evaluation.db") # The local storage
-    schema_path: Path = Path("evaluation_schema.sql") # SQL file schema
-    scenarios_path: Path = Path("evaluation/scenarios.json")
-    evidence_dir: Path = Path("evidence")
 
     def __post_init__(self) -> None:
         if not self.run_id.strip():
@@ -141,3 +137,14 @@ class CollectorConfig:
             raise ValueError("The evaluation collector must use QoS 1.")
         if not self.client_id.strip():
             raise ValueError("client_id must not be empty.")
+
+
+
+@dataclass(frozen=True, slots=True)
+class EvaluationConfig:
+    """Shared paths used by the impairment-based evaluation."""
+
+    database_path: Path = Path("data/evaluation.db") # The local storage
+    schema_path: Path = Path("evaluation_schema.sql") # SQL file schema
+    scenarios_path: Path = Path("evaluation/scenarios.json")
+    evidence_dir: Path = Path("evidence")

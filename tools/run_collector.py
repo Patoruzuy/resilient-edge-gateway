@@ -10,9 +10,11 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.config import CollectorConfig
+from src.config import CollectorConfig, EvaluationConfig, UpstreamConfig
 from src.collector import EvaluationCollector
 
+evaluation_config = EvaluationConfig()
+collector_config = UpstreamConfig()
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -20,10 +22,10 @@ def parse_args() -> argparse.Namespace:
             "Collect upstream MQTT telemetry as independent evaluation evidence.")
     )
     parser.add_argument("--run-id", required=True, help="Identifier for this evaluation run.")
-    parser.add_argument("--host", default="localhost")
-    parser.add_argument("--port", type=int, default=1884)
-    parser.add_argument("--topic", default="telemetry/#")
-    parser.add_argument("--database", type=Path, default=Path("data/evaluation.db"))
+    parser.add_argument("--host", default=collector_config.broker_host)
+    parser.add_argument("--port", type=int, default=collector_config.broker_port)
+    parser.add_argument("--topic", default=collector_config.topic_filter)
+    parser.add_argument("--database", type=Path, default=evaluation_config.database_path)
 
     return parser.parse_args()
 
@@ -39,9 +41,8 @@ def main() -> None:
         broker_host=args.host,
         broker_port=args.port,
         topic_filter=args.topic,
-        database_path=args.database,
     )
-    collector = EvaluationCollector(config)
+    collector = EvaluationCollector(config, database_path=args.database)
 
     try:
         collector.run()

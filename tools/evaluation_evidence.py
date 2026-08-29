@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.config import UpstreamConfig, CollectorConfig
+from src.config import EvaluationConfig, UpstreamConfig
 
 TIMELINE_FIELDS = ("timestamp", "event", "detail")
 STORAGE_FIELDS = (
@@ -55,7 +55,7 @@ def file_size(path: Path) -> int:
     """Return a file size, or zero if the file is absent."""
     if path.exists():
         return path.stat().st_size
-    else: 0
+    return 0
 
 def read_csv(path: Path) -> list[dict[str, str]]:
     """Read CSV rows when the file exists."""
@@ -99,7 +99,7 @@ def recovery_snapshot(scenario) -> dict:
 def initialise_run(args: argparse.Namespace) -> None:
     """Create the evidence directory and record planned parameters."""
     scenario = load_scenario(args.scenario)
-    config = CollectorConfig()
+    config = EvaluationConfig()
     run_dir = config.evidence_dir / args.run_id
 
     run_dir.mkdir(parents=True,exist_ok=False)
@@ -209,6 +209,7 @@ def sample_storage(args: argparse.Namespace) -> None:
 
 def first_event(timeline: list[dict[str, str]], event_name: str) -> str | None:
     """Return the first matching event timestamp."""
+    matches = []
     for row in timeline:
         if row["event"] == event_name:
             matches.append(row["timestamp"])
@@ -223,6 +224,9 @@ def finalise_run(args: argparse.Namespace) -> None:
     impairment = json.loads((run_dir / "impairment.json").read_text(encoding="utf-8"))
     timeline = read_csv(run_dir / "timeline.csv")
     storage = read_csv(run_dir / "storage_samples.csv")
+
+    total_sizes = []
+    backlog_sizes = []
 
     impairment_applied = first_event(timeline, "impairment_applied")
     impairment_removed = first_event(timeline, "impairment_removed")

@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.config import UpstreamConfig, CollectorConfig
+from src.config import EvaluationConfig, UpstreamConfig
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -26,10 +26,11 @@ def parse_args() -> argparse.Namespace:
 
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument("--direct", action="store_true",
-        help=("Publisher and collector evidence for a direct-publication."))
+        help="Publisher and collector evidence for a direct-publication.")
     parser.add_argument("--collector-only", action="store_true",
-        help=("Print collector duplicate-control evidence only"))
-
+        help="Print collector duplicate-control evidence only")
+    parser.add_argument("--gateway-db", type=Path, default=None, help="Optional gateway database path.")
+    parser.add_argument("--evaluation-db", type=Path, default=None, help="Optional evaluation database path.")
     return parser.parse_args()
 
 def stable_key(row) -> tuple[str, str, int]:
@@ -107,16 +108,22 @@ def print_collector_duplicate_summary(collector_rows, run_id: str) -> None:
 def main() -> None:
     args = parse_args()
     upstream_config = UpstreamConfig()
-    evaluation_config = CollectorConfig()
+    evaluation_config = EvaluationConfig()
+
     evidence_dir = evaluation_config.evidence_dir
-    gateway_db_path = upstream_config.database_path
-    evaluation_db_path = evaluation_config.database_path
+    gateway_db_path = (
+        args.gateway_db
+        if args.gateway_db is not None
+        else upstream_config.database_path
+    )
 
-    gateway = sqlite3.connect(gateway_db_path)
-    gateway.row_factory = sqlite3.Row
+    evaluation_db_path = (
+        args.evaluation_db
+        if args.evaluation_db is not None
+        else evaluation_config.database_path
+    )
 
-    evaluation = sqlite3.connect(evaluation_db_path)
-    evaluation.row_factory = sqlite3.Row
+    evaluation = connect_existing_database(evaluation_db_path)
 
     try:
         collector_rows = evaluation.execute(
@@ -140,9 +147,7 @@ def main() -> None:
         ).fetchall()
 
     finally:
-        gateway.close()
         evaluation.close()
-
 
     if args.collector_only:
         print_collector_duplicate_summary(collector_rows, args.run_id)
@@ -169,8 +174,7 @@ def main() -> None:
     run_gateway_duplicates = []
 
     if not args.direct:
-        gateway = sqlite3.connect(args.gateway_db)
-        gateway.row_factory = sqlite3.Row
+        gateway = connect_existing_database(gateway_db_path)
 
         try:
             gateway_rows = gateway.execute(
@@ -310,6 +314,7 @@ def main() -> None:
 
     summary = {
         "run_id": args.run_id,
+        "evaluation_db": str(evaluation_db_path),
         "generated_unique": generated_unique,
 
         "collector_observations": len(collector_rows),
@@ -341,7 +346,8 @@ def main() -> None:
             if row["classification"] == "payload_conflict"
         )
         summary.update(
-            {
+            {   
+                "gateway_db": str(gateway_db_path),
                 "gateway_present": len(gateway_by_key),
                 "gateway_broker_acknowledged": gateway_broker_acknowledged,
                 "gateway_expected_retransmissions": gateway_expected_retransmissions,

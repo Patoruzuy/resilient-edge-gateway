@@ -15,14 +15,13 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from src.database import open_database, open_evaluation_database
-from src.config import UpstreamConfig, CollectorConfig
+from src.config import EvaluationConfig, UpstreamConfig
 
 upstream_config = UpstreamConfig()
-evaluation_config = CollectorConfig()
+
 GATEWAY_DB = upstream_config.database_path
-EVALUATION_DB = evaluation_config.database_path
 SCHEMA_PATH = upstream_config.schema_path
-EVALUATION_SCHEMA_PATH = evaluation_config.schema_path
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Prepare one TM470 evaluation run.")
@@ -30,9 +29,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--scenario", required=True)
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--repeat", type=int, required=True)
-    parser.add_argument("--upstream-host", default="172.24.96.1")
-    parser.add_argument("--upstream-port", type=int, default=1883)
-    parser.add_argument("--interface", default="eth0")
+    parser.add_argument(
+        "--upstream-host",
+        default=upstream_config.broker_host,
+        help="The upstream broker host for the evaluation run, for example 'localhost'."
+        )
+    parser.add_argument("--upstream-port", type=int, default=upstream_config.broker_port)
+    parser.add_argument(
+        "--interface",
+        required=True,
+        help="The network interface used for the evaluation run, for example 'eth0'."
+        )
     parser.add_argument(
         "--fresh",
         action="store_true",
@@ -61,21 +68,21 @@ def create_gateway_database() -> None:
     connection = open_database(GATEWAY_DB,SCHEMA_PATH)
     connection.close()
 
-def create_evaluation_database() -> None:
+def create_evaluation_database(evaluation_config: EvaluationConfig) -> None:
     """Create the independent collector database."""
-    connection = open_evaluation_database(EVALUATION_DB, EVALUATION_SCHEMA_PATH)
+    connection = open_evaluation_database(evaluation_config.database_path, evaluation_config.schema_path)
     connection.close()
 
-def prepare_databases(scenario: dict, fresh: bool) -> None:
+def prepare_databases(scenario: dict, fresh: bool, evaluation_config: EvaluationConfig) -> None:
     """Create the databases required by the selected scenario."""
     if fresh:
         delete_database(GATEWAY_DB)
-        delete_database(EVALUATION_DB)
+        delete_database(evaluation_config.database_path)
     if scenario["path"] == "gateway":
         if not GATEWAY_DB.exists():
             create_gateway_database()
-    if not EVALUATION_DB.exists():
-        create_evaluation_database()
+    if not evaluation_config.database_path.exists():
+        create_evaluation_database(evaluation_config)
 
 
 def initialise_evidence(args: argparse.Namespace) -> None:
@@ -144,8 +151,9 @@ def print_next_steps(args: argparse.Namespace,scenario: dict) -> None:
 
 def main() -> None:
     args = parse_args()
+    evaluation_config = EvaluationConfig()
     scenario = load_scenario(evaluation_config.scenarios_path, args.scenario)
-    prepare_databases(scenario,args.fresh)
+    prepare_databases(scenario,args.fresh, evaluation_config)
     initialise_evidence(args)
     print_next_steps(args,scenario)
 

@@ -41,7 +41,9 @@ def main() -> None:
         raise ValueError("count must be positive")
 
     session_id = args.session_id or f"{args.run_id}-session-001"
-    evidence_dir = CollectorConfig.evidence_dir / args.run_id
+
+    evaluation_config = CollectorConfig(run_id=args.run_id)
+    evidence_dir = evaluation_config.evidence_dir / args.run_id
     evidence_dir.mkdir(parents=True, exist_ok=True)
     output_path = (evidence_dir / "publisher_output.csv")
 

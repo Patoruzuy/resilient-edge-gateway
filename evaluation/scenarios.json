@@ -1,9 +1,9 @@
 {
   "notes": [
-    "TMA03 requires defined outage durations, varied message rates, larger samples and repeated runs, but does not prescribe exact numerical values.",
-    "The 100 ms delay and 10% loss condition reuses the exploratory TMA03 impairment setting.",
-    "Each condition is repeated three times.",
-    "Outage tets use post-publisher controlled recovery. Concurrent live forwarding during recovery is not claimed in these tests."
+    "TMA03 needs specific outage durations, different message rates, larger samples and multiple runs, but does not specify exact numbers.",
+    "The 100 ms delay and 10% loss scenario uses the exploratory impairment setting from TMA03.",
+    "Each condition is tested three times.",
+    "Outage tests use controlled recovery after publishing. These tests do not claim concurrent live forwarding during the recovery process."
   ],
   "scenarios": [
     {
@@ -42,24 +42,24 @@
     {
       "id": "OUT-15S-2HZ",
       "path": "gateway",
-      "message_count": 100,
+      "message_count": 30,
       "rate_hz": 2,
       "delay_ms": 0,
       "loss_pct": 100,
       "outage_seconds": 15,
       "repeats": 3,
-      "purpose": "Short outage with moderate message generation followed by controlled backlog recovery."
+      "purpose": "Short outage with 30 message generated followed by controlled backlog recovery."
     },
     {
       "id": "OUT-30S-5HZ",
       "path": "gateway",
-      "message_count": 200,
+      "message_count": 150,
       "rate_hz": 5,
       "delay_ms": 0,
       "loss_pct": 100,
       "outage_seconds": 30,
       "repeats": 3,
-      "purpose": "Longer outage with a larger durable backlog for EO3 and EO4."
+      "purpose": "Longer outage with a 150 message backlog for EO3 and EO4."
     }
   ]
 }
