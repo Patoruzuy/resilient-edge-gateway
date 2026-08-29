@@ -8,15 +8,9 @@ another batch is attempted.
 """
 from datetime import datetime, timedelta, timezone
 import logging
-import sys
 import time
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from src.config import UpstreamConfig
+from src.config import UpstreamConfig, configure_logging
 from src.controlled_recovery import (
     publish_health_probe,
     publish_recovery_batch,
@@ -38,10 +32,7 @@ def stale_before_timestamp(timeout_seconds: float) -> str:
 
 
 def main() -> None:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s %(message)s",
-    )
+    configure_logging()
     config = UpstreamConfig()
     connection = open_database(
         database_path=config.database_path,

@@ -3,14 +3,9 @@ Run the independent upstream evaluation collector.
 """
 import argparse
 import logging
-import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from src.config import CollectorConfig, EvaluationConfig
+from src.config import CollectorConfig, EvaluationConfig, configure_logging
 from src.collector import EvaluationCollector
 
 
@@ -31,10 +26,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    logging.basicConfig(
-        level=logging.INFO,
-        format=("%(asctime)s %(levelname)s %(name)s %(message)s"),
-    )
+    configure_logging()
     config = CollectorConfig(
         run_id=args.run_id,
         broker_host=args.host,

@@ -4,14 +4,8 @@ output containing the expected message identities.
 """
 import argparse
 import csv
-import sys
 import threading
 import time
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parent.parent
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
 
 import paho.mqtt.client as mqtt
 

@@ -7,14 +7,8 @@ The retry_wait records are not replayed by this tool.
 """
 from datetime import datetime, timedelta, timezone
 import logging
-import sys
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from src.config import UpstreamConfig
+from src.config import UpstreamConfig, configure_logging
 from src.database import open_database
 from src.repository import recover_stale_in_flight
 from src.upstream import UpstreamMqttConnection, publish_one_pending
@@ -31,10 +25,7 @@ def stale_before_timestamp(timeout_seconds: float) -> str:
     return threshold.isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 def main() -> None:
-    logging.basicConfig(
-        level=logging.INFO,
-        format=("%(asctime)s %(levelname)s %(name)s %(message)s"),
-    )
+    configure_logging()
     config = UpstreamConfig()
 
     connection = open_database(

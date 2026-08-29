@@ -8,14 +8,9 @@ Normal mode compares publisher, gateway and collector evidence.
 import argparse
 import csv
 import json
-import sys
 import sqlite3
 from collections import defaultdict
 from pathlib import Path
-
-ROOT = Path(__file__).resolve().parent.parent
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
 
 from src.config import EvaluationConfig, UpstreamConfig
 
