@@ -9,7 +9,7 @@ import csv
 import json
 import sqlite3
 import sys
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -17,6 +17,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from src.config import EvaluationConfig, UpstreamConfig
+from src.repository import utc_now
 
 TIMELINE_FIELDS = ("timestamp", "event", "detail")
 STORAGE_FIELDS = (
@@ -32,9 +33,6 @@ STORAGE_FIELDS = (
     "total_bytes",
 )
 
-def utc_now() -> str:
-    """Return the current UTC timestamp."""
-    return datetime.now(timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 def parse_utc(value: str) -> datetime:
     """Parse a UTC timestamp written by this tool."""
@@ -71,13 +69,12 @@ def is_run_dir(dir) -> Path:
         raise FileNotFoundError(f"Not an initialised evaluation run: {run_dir}")
     return run_dir
 
-def load_scenario(scenario_id: str) -> dict:
+def load_scenario(scenario_id: str, scenarios_path: Path) -> dict:
     """ Return one scenario from evaluation/scenarios.json."""
-    path = Path("evaluation/scenarios.json")
-    if not path.is_file():
-        raise FileNotFoundError(f"Scenario file does not exist: {path}")
+    if not scenarios_path.is_file():
+        raise FileNotFoundError(f"Scenario file does not exist: {scenarios_path}")
 
-    data = json.loads(path.read_text(encoding="utf-8"))
+    data = json.loads(scenarios_path.read_text(encoding="utf-8"))
     scenario_rows = data.get("scenarios")
 
     for scenario in scenario_rows:
@@ -85,9 +82,8 @@ def load_scenario(scenario_id: str) -> dict:
             return scenario
     raise ValueError(f"Unknown scenario: {scenario_id}")
 
-def recovery_snapshot(scenario) -> dict:
+def recovery_snapshot(config: UpstreamConfig) -> dict:
     """Returns the controlled-recovery settings."""
-    config = UpstreamConfig()
 
     return {
         "link_stability_seconds": config.link_stability_seconds,
@@ -98,9 +94,10 @@ def recovery_snapshot(scenario) -> dict:
 
 def initialise_run(args: argparse.Namespace) -> None:
     """Create the evidence directory and record planned parameters."""
-    scenario = load_scenario(args.scenario)
-    config = EvaluationConfig()
-    run_dir = config.evidence_dir / args.run_id
+    evaluation_config = EvaluationConfig()
+    config = UpstreamConfig()
+    scenario = load_scenario(args.scenario, evaluation_config.scenarios_path)
+    run_dir = evaluation_config.evidence_dir / args.run_id
 
     run_dir.mkdir(parents=True,exist_ok=False)
 
@@ -117,7 +114,7 @@ def initialise_run(args: argparse.Namespace) -> None:
         "delay_ms": float(scenario["delay_ms"]),
         "loss_pct": float(scenario["loss_pct"]),
         "configured_outage_seconds": float(scenario["outage_seconds"]),
-        "recovery": recovery_snapshot(scenario),
+        "recovery": recovery_snapshot(config),
     }
 
     (run_dir / "impairment.json").write_text(
@@ -163,12 +160,13 @@ def storage_counts(connection: sqlite3.Connection) -> dict[str, int]:
 def sample_storage(args: argparse.Namespace) -> None:
     """Append one storage and durable-state sample."""
     run_dir = is_run_dir(args.run_dir)
+    evidence_config = EvaluationConfig()
     impairment = json.loads((run_dir / "impairment.json").read_text(encoding="utf-8"))
 
     if impairment["path"] != "gateway":
         raise ValueError("Storage sampling is only used for gateway scenarios.")
 
-    database_path = Path("data/gateway.db")
+    database_path = evidence_config.database_path
     if not database_path.is_file():
         raise FileNotFoundError(f"Gateway database does not exist: {database_path}")
     # Opens the existing SQLite database without creating or changing it.

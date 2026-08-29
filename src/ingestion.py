@@ -137,7 +137,7 @@ class GatewayIngestionService:
     """
     def __init__(self, config: IngestionConfig) -> None:
         self._config = config
-        self_connection: sqlite3.Connection
+        self._connection: sqlite3.Connection | None = None
         self._client = mqtt.Client(
             callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
             client_id=config.client_id,
