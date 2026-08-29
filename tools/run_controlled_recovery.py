@@ -33,7 +33,6 @@ def stale_before_timestamp(timeout_seconds: float) -> str:
     """Return the UTC threshold used to identify stale attempts."""
     if timeout_seconds <= 0:
         raise ValueError("timeout_seconds must be positive")
-
     threshold = datetime.now(timezone.utc) - timedelta(seconds=timeout_seconds)
     return threshold.isoformat(timespec="microseconds").replace("+00:00", "Z")
 
@@ -43,7 +42,6 @@ def main() -> None:
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
-
     config = UpstreamConfig()
     connection = open_database(
         database_path=config.database_path,
@@ -58,12 +56,10 @@ def main() -> None:
                 config.stale_inflight_timeout_seconds
             ),
         )
-
         if recovered:
             log.info("Recovered stale in_flight records: count=%s", recovered)
 
         upstream.connect()
-
         while True:
             # A full stability time is required when controlled
             # recovery starts or after a previous failure made the
@@ -113,7 +109,6 @@ def main() -> None:
                     result.stopped_on_failure,
                     result.backlog_empty,
                 )
-
                 if result.backlog_empty:
                     log.info("No eligible backlog remains. Controlled recovery complete.")
                     return

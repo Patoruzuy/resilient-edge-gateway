@@ -15,10 +15,8 @@ def get_journal_mode(connection: sqlite3.Connection) -> str:
     confirm that WAL mode is active.
     """
     row = connection.execute("PRAGMA journal_mode").fetchone()
-
     if row is None:
         raise RuntimeError("SQLite did not return a journal mode")
-
     # SQLite always returns a row ['wal']
     return str(row[0]).lower()
 
@@ -32,7 +30,6 @@ def open_database(database_path: str | Path, schema_path: str | Path) -> sqlite3
     """
     database_path = Path(database_path)
     schema_path = Path(schema_path)
-
     if not schema_path.is_file():
         raise RuntimeError(f"Schema file does not exist: {schema_path}")
 
@@ -40,27 +37,22 @@ def open_database(database_path: str | Path, schema_path: str | Path) -> sqlite3
 
     connection = sqlite3.connect(database_path, timeout=5.0)
     connection.row_factory = sqlite3.Row
-
     try:
         # These settings apply to each SQLite connection
         # SQLite foreign-key enforced per connection, so it must
         # be enabled whenever the gateway opens the database.
         connection.execute("PRAGMA foreign_keys = ON")
         connection.execute("PRAGMA busy_timeout = 5000")
-
         # Attempts to change the mode
         connection.execute("PRAGMA journal_mode = WAL")
 
         if get_journal_mode(connection) != "wal":
             raise RuntimeError("SQLite WAL mode could not be enabled")
-
         # Ensure the schema exists in the database.
         schema_sql = schema_path.read_text(encoding="utf-8")
         connection.executescript(schema_sql)
-
         # Query and it returns 1 when enforcement is active and 0 when disabled.
         foreign_keys = connection.execute("PRAGMA foreign_keys").fetchone()
-
         if foreign_keys is None or int(foreign_keys[0]) != 1:
             raise RuntimeError("SQLite foreign-keys enforcement is not active")
 
@@ -81,13 +73,9 @@ def open_database(database_path: str | Path, schema_path: str | Path) -> sqlite3
         connection.close()
         raise
 
-def open_evaluation_database(
-    database_path: Path,
-    schema_path: Path,
-) -> sqlite3.Connection:
+def open_evaluation_database(database_path: Path, schema_path: Path) -> sqlite3.Connection:
     """
     Open and initialise the independent evaluation database.
-
     Evaluation evidence is stored separately from gateway operational
     state so that measurement records do not affect the system being
     evaluated.
@@ -99,7 +87,6 @@ def open_evaluation_database(
     try:
         connection.execute("PRAGMA foreign_keys = ON")
         connection.execute("PRAGMA busy_timeout = 5000")
-
         # Ensure the schema exists in the database.
         schema_sql = schema_path.read_text(encoding="utf-8")
         connection.executescript(schema_sql)
@@ -107,7 +94,6 @@ def open_evaluation_database(
 
         if str(journal_mode).lower() != "wal":
             raise RuntimeError("Evaluation database is not using WAL mode.")
-
         return connection
 
     except Exception:

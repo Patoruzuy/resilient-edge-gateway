@@ -19,9 +19,7 @@ def main() -> None:
     try:
         service.run()
     except KeyboardInterrupt:
-        logging.getLogger(__name__).info(
-            "Gateway ingestion stopped by user."
-        )
+        logging.getLogger(__name__).info("Gateway ingestion stopped by user.")
         service.stop()
 
 

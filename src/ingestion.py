@@ -99,7 +99,6 @@ def process_mqtt_publication(
 
     return _map_store_result(topic, stored)
 
-
 def _map_store_result(topic: str, result: StoreResult) -> IngestionResult:
     """
     Convert a repository StoreResult into an ingestion-level result.
@@ -111,14 +110,12 @@ def _map_store_result(topic: str, result: StoreResult) -> IngestionResult:
         StoreOutcome.DUPLICATE: IngestionOutcome.DUPLICATE,
         StoreOutcome.CONFLICT: IngestionOutcome.CONFLICT,
     }
-
     ingestion_result = IngestionResult(
         outcome=outcome_mapping[result.outcome],
         topic=topic,
         message_id=result.message_id,
         row_id=result.row_id,
     )
-
     log.info(
         "Telemetry publication processed: topic=%s message_id=%s"
         "row_id=%s outcome=%s",
@@ -140,8 +137,7 @@ class GatewayIngestionService:
     """
     def __init__(self, config: IngestionConfig) -> None:
         self._config = config
-        self_connection: sqlite3.Connection
-
+        self._connection: sqlite3.Connection | None = None
         self._client = mqtt.Client(
             callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
             client_id=config.client_id,
@@ -167,19 +163,13 @@ class GatewayIngestionService:
         # Remove unused parameters to avoid accidental use and keep the
         # callback signature clean.
         del userdata, flags, properties
-
         if reason_code !=0:
-            log.error(
-            "connection to local broker failed: reason=%s",
-            reason_code,
-            )
+            log.error("connection to local broker failed: reason=%s", reason_code)
             return
-
         result, message_id = client.subscribe(
             self._config.topic_filter,
             qos=self._config.qos,
         )
-
         if result != mqtt.MQTT_ERR_SUCCESS:
             log.error(
                 "Unable to subscribe to local topic: filter=%s result=%s",
@@ -187,7 +177,6 @@ class GatewayIngestionService:
                 result,
             )
             return
-
         log.info(
             "Subscribed to local broker: filter=%s qos=%s mid=%s",
             self._config.topic_filter,
@@ -208,11 +197,9 @@ class GatewayIngestionService:
         """
         # Same reason as above: make it explicit that these are unused.
         del client, userdata
-
         if self._connection is None:
             log.error("MQTT publication received before database initialisation")
             return
-
         try:
             process_mqtt_publication(
                 connection=self._connection,
@@ -234,7 +221,6 @@ class GatewayIngestionService:
     ) -> None:
         """Record disconnection from the local broker."""
         del client, userdata, disconnect_flags, properties
-
         log.warning("Disconnected from local broker: reason=%s", reason_code)
 
     def run(self) -> None:
@@ -243,7 +229,6 @@ class GatewayIngestionService:
             database_path=self._config.database_path,
             schema_path=self._config.schema_path,
         )
-
         try:
             log.info(
                 "connecting to local Mosquitto broker: host=%s port=%s",

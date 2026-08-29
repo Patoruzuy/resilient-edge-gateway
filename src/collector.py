@@ -8,11 +8,10 @@ import logging
 import sqlite3
 import paho.mqtt.client as mqtt
 
-from src.config import CollectorConfig
+from src.config import CollectorConfig, EvaluationConfig
 from src.database import open_evaluation_database
 from src.repository import record_collector_observation, record_collector_rejection
 from src.validation import MessageValidationError, parse_telemetry_message
-
 
 log = logging.getLogger(__name__)
 
@@ -20,11 +19,9 @@ log = logging.getLogger(__name__)
 class EvaluationCollector:
     """Collect independent evidence from the upstream MQTT broker."""
 
-    def __init__(
-        self,
-        config: CollectorConfig,
-    ) -> None:
+    def __init__(self, config: CollectorConfig, evaluation_config: EvaluationConfig) -> None:
         self._config = config
+        self._evaluation_config = evaluation_config
         self._connection: sqlite3.Connection | None = None
         self._client = mqtt.Client(
             callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
@@ -51,10 +48,7 @@ class EvaluationCollector:
                 )
             return
 
-        result, mid = client.subscribe(
-            self._config.topic_filter,
-            qos=self._config.qos,
-        )
+        result, mid = client.subscribe(self._config.topic_filter, qos=self._config.qos)
         if result != mqtt.MQTT_ERR_SUCCESS:
             log.error(
                 "Collector subscription failed: filter=%s result=%s",
@@ -80,8 +74,7 @@ class EvaluationCollector:
         del client, userdata
 
         if self._connection is None:
-            log.error("Collector message received before database initialisation."
-            )
+            log.error("Collector message received before database initialisation.")
             return
         try:
             telemetry = parse_telemetry_message(message.payload)
@@ -156,8 +149,8 @@ class EvaluationCollector:
     def run(self) -> None:
         """Open evidence storage and run the MQTT collector."""
         self._connection = open_evaluation_database(
-            database_path=self._config.database_path,
-            schema_path=self._config.schema_path,
+            database_path=self._evaluation_config.database_path,
+            schema_path=self._evaluation_config.schema_path,
         )
         log.info(
             "Starting evaluation collector: run_id=%s host=%s port=%s",
@@ -165,7 +158,6 @@ class EvaluationCollector:
             self._config.broker_host,
             self._config.broker_port,
         )
-
         try:
             self._client.connect(
                 host=self._config.broker_host,
