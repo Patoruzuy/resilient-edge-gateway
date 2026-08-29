@@ -3,7 +3,6 @@ Run the independent upstream evaluation collector.
 """
 import argparse
 import logging
-from logging import config
 import sys
 from pathlib import Path
 
@@ -16,6 +15,7 @@ from src.collector import EvaluationCollector
 
 
 def parse_args() -> argparse.Namespace:
+    evaluation_config = EvaluationConfig()
     parser = argparse.ArgumentParser(
         description=(
             "Collect upstream MQTT telemetry as independent evaluation evidence.")
@@ -24,7 +24,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--host", default="localhost")
     parser.add_argument("--port", type=int, default=1883)
     parser.add_argument("--topic", default="telemetry/#")
-    parser.add_argument("--database", type=Path, default=Path("data/evaluation.db"))
+    parser.add_argument("--database", type=Path, default=evaluation_config.database_path)
 
     return parser.parse_args()
 
@@ -42,11 +42,7 @@ def main() -> None:
         topic_filter=args.topic,
     )
 
-    if args.database:
-        evaluation_config = EvaluationConfig(database_path=args.database)
-    else:
-        evaluation_config = EvaluationConfig()
-
+    evaluation_config = EvaluationConfig(database_path=args.database)
     collector = EvaluationCollector(config, evaluation_config)
 
     try:
