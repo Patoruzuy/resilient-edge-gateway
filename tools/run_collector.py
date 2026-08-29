@@ -23,7 +23,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--host", default="localhost")
     parser.add_argument("--port", type=int, default=1884)
     parser.add_argument("--topic", default="telemetry/#")
-    parser.add_argument("--database", type=Path, default=CollectorConfig.database_path)
+    parser.add_argument("--database", type=Path, default=Path("data/evaluation.db"))
 
     return parser.parse_args()
 

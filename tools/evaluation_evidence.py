@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.config import UpstreamConfig
+from src.config import UpstreamConfig, CollectorConfig
 
 TIMELINE_FIELDS = ("timestamp", "event", "detail")
 STORAGE_FIELDS = (
@@ -36,11 +36,9 @@ def utc_now() -> str:
     """Return the current UTC timestamp."""
     return datetime.now(timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
 
-
 def parse_utc(value: str) -> datetime:
     """Parse a UTC timestamp written by this tool."""
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
-
 
 def append_csv(path: Path, fieldnames, row: dict[str, object]) -> None:
     """Append one CSV row, creating the header when necessary."""
@@ -49,7 +47,6 @@ def append_csv(path: Path, fieldnames, row: dict[str, object]) -> None:
 
     with path.open("a", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
-
         if write_header:
             writer.writeheader()
         writer.writerow(row)
@@ -102,8 +99,8 @@ def recovery_snapshot(scenario) -> dict:
 def initialise_run(args: argparse.Namespace) -> None:
     """Create the evidence directory and record planned parameters."""
     scenario = load_scenario(args.scenario)
-
-    run_dir = Path("evidence") / args.run_id
+    config = CollectorConfig()
+    run_dir = config.evidence_dir / args.run_id
 
     run_dir.mkdir(parents=True,exist_ok=False)
 

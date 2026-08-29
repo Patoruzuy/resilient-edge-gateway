@@ -106,9 +106,11 @@ def print_collector_duplicate_summary(collector_rows, run_id: str) -> None:
 
 def main() -> None:
     args = parse_args()
-    evidence_dir = CollectorConfig.evidence_dir
-    gateway_db_path = UpstreamConfig.database_path
-    evaluation_db_path = CollectorConfig.database_path
+    upstream_config = UpstreamConfig()
+    evaluation_config = CollectorConfig()
+    evidence_dir = evaluation_config.evidence_dir
+    gateway_db_path = upstream_config.database_path
+    evaluation_db_path = evaluation_config.database_path
 
     gateway = sqlite3.connect(gateway_db_path)
     gateway.row_factory = sqlite3.Row
