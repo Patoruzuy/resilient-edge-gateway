@@ -34,7 +34,7 @@ def parse_args(upstream_config: UpstreamConfig) -> argparse.Namespace:
     parser.add_argument(
         "--fresh",
         action="store_true",
-        help="Delete and recreate the evaluation databases.",
+        help="Delete and recreate the gateway database for gateway scenarios.",
     )
 
     return parser.parse_args()
@@ -68,18 +68,30 @@ def prepare_databases(
         scenario: dict,
         fresh: bool,
         upstream_config: UpstreamConfig,
-        evaluation_config: EvaluationConfig,
     ) -> None:
-    """Create the databases required by the selected scenario."""
+    """Prepare the gateway database when the scenario uses the gateway."""
+
+    if scenario["path"] != "gateway":
+        return
+
     if fresh:
         delete_database(upstream_config.database_path)
-        delete_database(evaluation_config.database_path)
-    if scenario["path"] == "gateway":
-        if not upstream_config.database_path.exists():
-            create_gateway_database(upstream_config)
-    if not evaluation_config.database_path.exists():
-        create_evaluation_database(evaluation_config)
 
+    if not upstream_config.database_path.exists():
+        create_gateway_database(upstream_config)
+
+def ensure_run_is_new(
+    run_id: str,
+    evaluation_config: EvaluationConfig,
+) -> None:
+    """Refuse to prepare an existing evidence run."""
+
+    run_dir = evaluation_config.evidence_dir / run_id
+
+    if run_dir.exists():
+        raise FileExistsError(
+            f"Evaluation run already exists: {run_dir}"
+        )
 
 def initialise_evidence(args: argparse.Namespace) -> None:
     """Use the existing evidence tool to initialise the run."""
@@ -128,7 +140,11 @@ def print_next_steps(
     else:
         print("Gateway is bypassed for this direct baseline.")
 
-    print(f"Evaluation database: {evaluation_config.database_path}")
+    collector_db = f"{evaluation_config.evidence_dir}/{args.run_id}/evaluation.db"
+
+    print("Collector database:")
+    print(f"  Windows during run")
+    print(f"  Copy after shutdown to: {collector_db}")
     print()
     print("Start the collector using this run ID.")
     print("Publisher command:")
@@ -157,7 +173,8 @@ def main() -> None:
 
     args = parse_args(upstream_config)
     scenario = load_scenario(evaluation_config.scenarios_path, args.scenario)
-    prepare_databases(scenario,args.fresh, upstream_config, evaluation_config)
+    ensure_run_is_new(args.run_id, evaluation_config)
+    prepare_databases(scenario,args.fresh, upstream_config)
     initialise_evidence(args)
     print_next_steps(args,scenario, upstream_config, evaluation_config)
 
