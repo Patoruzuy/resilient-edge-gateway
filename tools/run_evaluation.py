@@ -133,7 +133,7 @@ def print_next_steps(
     print("Start the collector using this run ID.")
     print("Publisher command:")
     print(
-        f"{sys.executable} -m tools.simulated_publisher"
+        f"{sys.executable} -m tools.simulated_publisher "
         f"--run-id {args.run_id} "
         f"--count {scenario['message_count']} "
         f"--interval-ms {interval_ms} "
