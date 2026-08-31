@@ -226,6 +226,8 @@ def finalise_run(args: argparse.Namespace) -> None:
     recovery_started = first_event(timeline,"recovery_started")
     recovery_complete = first_event(timeline, "recovery_complete")
 
+    configured_outage_seconds = float(impairment.get("configured_outage_seconds", 0.0))
+
     actual_outage_seconds = None
     if impairment_applied and impairment_removed:
         actual_outage_seconds = (
@@ -234,9 +236,14 @@ def finalise_run(args: argparse.Namespace) -> None:
 
     backlog_drain_seconds = None
 
-    if recovery_started and recovery_complete:
-        backlog_drain_seconds = (
-            parse_utc(recovery_complete) - parse_utc(recovery_started)
+    if (
+        configured_outage_seconds > 0
+        and impairment_applied
+        and impairment_removed
+    ):
+        actual_outage_seconds = (
+            parse_utc(impairment_removed)
+            - parse_utc(impairment_applied)
         ).total_seconds()
 
     for row in storage:
@@ -252,7 +259,7 @@ def finalise_run(args: argparse.Namespace) -> None:
 
     metrics = {
         "generated_at": utc_now(),
-        "configured_outage_seconds": impairment.get("configured_outage_seconds"),
+        "configured_outage_seconds": configured_outage_seconds,
         "actual_outage_seconds": actual_outage_seconds,
         "backlog_drain_seconds": backlog_drain_seconds,
         "storage_growth_bytes": (total_sizes[-1] - total_sizes[0]
