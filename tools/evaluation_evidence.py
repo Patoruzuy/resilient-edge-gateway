@@ -229,12 +229,6 @@ def finalise_run(args: argparse.Namespace) -> None:
     configured_outage_seconds = float(impairment.get("configured_outage_seconds", 0.0))
 
     actual_outage_seconds = None
-    if impairment_applied and impairment_removed:
-        actual_outage_seconds = (
-            parse_utc(impairment_removed) - parse_utc(impairment_applied)
-        ).total_seconds()
-
-    backlog_drain_seconds = None
 
     if (
         configured_outage_seconds > 0
@@ -246,6 +240,13 @@ def finalise_run(args: argparse.Namespace) -> None:
             - parse_utc(impairment_applied)
         ).total_seconds()
 
+    backlog_drain_seconds = None
+    if recovery_started and recovery_complete:
+        backlog_drain_seconds = (
+            parse_utc(recovery_complete)
+            - parse_utc(recovery_started)
+        ).total_seconds()
+        
     for row in storage:
         if row.get("total_bytes"):
             total_sizes.append(int(row["total_bytes"]))
