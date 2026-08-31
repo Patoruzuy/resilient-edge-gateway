@@ -1,0 +1,3 @@
+timestamp,event,detail
+2026-08-31T12:55:40.495472Z,recovery_started,Controlled recovery started
+2026-08-31T12:55:55.154543Z,recovery_complete,Controlled recovery completed

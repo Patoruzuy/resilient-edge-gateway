@@ -1,0 +1,112 @@
+
+The test went well, the expected outputs:
+
+Termina 1:
+(venv) Documents/University/UNI2026/Project_TM470/resilient-edge-gateway$ mosquitto -p 1884 -v
+1786884891: mosquitto version 2.0.11 starting
+1786884891: Using default config.
+1786884891: Starting in local only mode. Connections will only be possible from clients running on this machine.
+1786884891: Create a configuration file which defines a listener to allow remote access.
+1786884891: For more details see https://mosquitto.org/documentation/authentication-methods/
+1786884891: Opening ipv4 listen socket on port 1884.
+1786884891: Opening ipv6 listen socket on port 1884.
+1786884891: mosquitto version 2.0.11 running
+1786885063: New connection from 127.0.0.1:44471 on port 1884.
+1786885063: New client connected from 127.0.0.1:44471 as edge-gateway-upstream (p2, c1, k60).
+1786885063: No will message specified.
+1786885063: Sending CONNACK to edge-gateway-upstream (0, 0)
+1786885063: Received PUBLISH from edge-gateway-upstream (d0, q1, r0, m1, 'telemetry/sensor-001', ... (235 bytes))
+1786885063: Sending PUBACK to edge-gateway-upstream (m1, rc0)
+1786885063: Received DISCONNECT from edge-gateway-upstream
+1786885063: Client edge-gateway-upstream disconnected.
+
+
+Terminal 2:
+(venv) Documents/University/UNI2026/Project_TM470/resilient-edge-gateway$ python -m src
+2026-08-16 13:55:11,514 INFO src.ingestion connecting to local Mosquitto broker: host=localhost port=1883
+2026-08-16 13:55:11,518 INFO src.ingestion Subscribed to local broker: filter=telemetry/# qos=1 mid=1
+2026-08-16 13:55:21,128 INFO src.ingestion Telemetry publication processed: topic=telemetry/sensor-001 message_id=stale-smoke-001row_id=55 outcome=inserted
+^C2026-08-16 13:57:01,152 INFO __main__ Gateway ingestion stopped by user.
+2026-08-16 13:57:01,152 WARNING src.ingestion Disconnected from local broker: reason=Normal disconnection
+(venv) Documents/University/UNI2026/Project_TM470/resilient-edge-gateway$ python tools/publish_pending.py
+2026-08-16 13:57:43,641 INFO __main__ Recovered stale in_flight records: count=1 stale_before=2026-08-16T12:57:13.622488Z
+2026-08-16 13:57:43,646 INFO src.upstream Connected to upstream broker: host=localhost port=1884
+2026-08-16 13:57:43,660 INFO src.upstream Upstream broker acknowledged publication: row_id=54 message_id=duplicate-evidence-001 mid=1
+2026-08-16 13:57:43,660 INFO __main__ Baseline publication result: outcome=broker_acknowledged row_id=54 message_id=duplicate-evidence-001 mid=1 detail=None
+2026-08-16 13:57:43,661 INFO src.upstream Disconnected from upstream broker.
+
+Terminal 3:
+(venv) Documents/University/UNI2026/Project_TM470/resilient-edge-gateway$ mosquitto_pub \
+  -h localhost \
+  -p 1883 \
+  -t "telemetry/sensor-001" \
+  -q 1 \
+  -m '{
+    "message_id":"stale-smoke-001",
+    "device_id":"sensor-001",
+    "publisher_session_id":"stale-smoke-session-001",
+    "source_sequence":1,
+    "source_timestamp":"2026-08-16T11:15:00Z",
+    "priority":0,
+    "payload":{"temperature_c":18.5}
+  }'
+(venv) Documents/University/UNI2026/Project_TM470/resilient-edge-gateway$ sqlite3 data/gateway.db "
+SELECT
+    id,
+    message_id,
+    delivery_state,
+    attempt_count,
+    last_attempt_at
+FROM outbox_messages
+WHERE message_id = 'stale-smoke-001';
+"
+55|stale-smoke-001|pending|0|
+(venv) Documents/University/UNI2026/Project_TM470/resilient-edge-gateway$ sqlite3 data/gateway.db "
+UPDATE outbox_messages
+SET
+    delivery_state = 'in_flight',
+    attempt_count = 1,
+    last_attempt_at = '2026-08-15T09:00:00.000000Z',
+    updated_at = '2026-08-15T09:00:00.000000Z'
+WHERE message_id = 'stale-smoke-001';
+"
+(venv) Documents/University/UNI2026/Project_TM470/resilient-edge-gateway$ sqlite3 data/gateway.db "
+SELECT
+    message_id,
+    delivery_state,
+    attempt_count,
+    last_attempt_at,
+    acknowledged_at
+FROM outbox_messages
+WHERE message_id = 'stale-smoke-001';
+"
+stale-smoke-001|in_flight|1|2026-08-15T09:00:00.000000Z|
+(venv) Documents/University/UNI2026/Project_TM470/resilient-edge-gateway$ sqlite3 data/gateway.db "
+SELECT
+    message_id,
+    delivery_state,
+    attempt_count,
+    last_attempt_at,
+    acknowledged_at,
+    next_retry_at
+FROM outbox_messages
+WHERE message_id = 'stale-smoke-001';
+"
+stale-smoke-001|retry_wait|1|2026-08-15T09:00:00.000000Z||
+(venv) Documents/University/UNI2026/Project_TM470/resilient-edge-gateway$ sqlite3 data/gateway.db "
+SELECT COUNT(*)
+FROM outbox_messages
+WHERE message_id = 'stale-smoke-001'
+  AND delivery_state = 'in_flight';
+"
+0
+(venv) Documents/University/UNI2026/Project_TM470/resilient-edge-gateway$ sqlite3 data/gateway.db "
+SELECT COUNT(*)
+FROM outbox_messages
+WHERE message_id = 'stale-smoke-001'
+  AND delivery_state = 'retry_wait';
+"
+1
+(venv) Documents/University/UNI2026/Project_TM470/resilient-edge-gateway$
+(venv) Documents/University/UNI2026/Project_TM470/resilient-edge-gateway$date
+Sun Aug 16 14:17:18 BST 2026

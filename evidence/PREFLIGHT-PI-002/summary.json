@@ -1,0 +1,14 @@
+{
+  "run_id": "PREFLIGHT-PI-002",
+  "evaluation_db": "evidence/PREFLIGHT-PI-002/evaluation.db",
+  "generated_unique": 10,
+  "collector_observations": 10,
+  "collector_unique_expected_observed": 10,
+  "collector_duplicate_observations": 0,
+  "collector_conflicting_observations": 0,
+  "collector_conflicting_identities": 0,
+  "missing_gateway": 0,
+  "missing_collector": 0,
+  "unexpected_collector_identities": 0,
+  "delivery_completeness_pct": 100.0
+}

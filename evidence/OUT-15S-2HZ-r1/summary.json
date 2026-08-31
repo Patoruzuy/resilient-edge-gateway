@@ -1,0 +1,19 @@
+{
+  "run_id": "OUT-15S-2HZ-r1",
+  "evaluation_db": "evidence/OUT-15S-2HZ-r1/evaluation.db",
+  "generated_unique": 30,
+  "collector_observations": 30,
+  "collector_unique_expected_observed": 30,
+  "collector_duplicate_observations": 0,
+  "collector_conflicting_observations": 0,
+  "collector_conflicting_identities": 0,
+  "missing_gateway": 0,
+  "missing_collector": 0,
+  "unexpected_collector_identities": 0,
+  "delivery_completeness_pct": 100.0,
+  "gateway_db": "evidence/OUT-15S-2HZ-r1/gateway.db",
+  "gateway_present": 30,
+  "gateway_broker_acknowledged": 30,
+  "gateway_expected_retransmissions": 0,
+  "gateway_payload_conflicts": 0
+}

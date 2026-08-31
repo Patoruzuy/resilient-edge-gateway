@@ -1,0 +1,3 @@
+evaluation-workflow mistake:
+
+The first gateway baseline confirmed that ingestion kept all 100 messages, but no upstream messages were stored because the ingestion run failed to activate the separate controlled-recovery publisher. This issue was fixed before proceeding with the last measurements.

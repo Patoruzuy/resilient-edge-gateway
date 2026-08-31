@@ -1,0 +1,132 @@
+
+Terminal 1:
+resilient-edge-gateway$ python -m src
+2026-08-15 14:00:21,521 INFO src.ingestion connecting to local Mosquitto broker: host=localhost port=1883
+2026-08-15 14:00:21,532 INFO src.ingestion Subscribed to local broker: filter=telemetry/# qos=1 mid=1
+2026-08-15 14:00:31,845 INFO src.ingestion Telemetry publication processed: topic=telemetry/sensor-001 message_id=duplicate-evidence-001row_id=54 outcome=inserted
+2026-08-15 14:01:16,611 INFO src.ingestion Telemetry publication processed: topic=telemetry/sensor-001 message_id=duplicate-evidence-001row_id=54 outcome=duplicate
+2026-08-15 14:01:49,699 INFO src.ingestion Telemetry publication processed: topic=telemetry/sensor-001 message_id=duplicate-evidence-001row_id=54 outcome=conflict
+
+Terminal 2:
+(venv) Documents/University/UNI2026/Project_TM470/resilient-edge-gateway$ mosquitto_pub \
+  -h localhost \
+  -p 1883 \
+  -q 1 \
+  -t telemetry/sensor-001 \
+  -m '{
+    "message_id": "duplicate-evidence-001",
+    "device_id": "sensor-001",
+    "publisher_session_id": "session-duplicate-evidence-001",
+    "source_sequence": 1,
+    "source_timestamp": "2026-08-15T12:30:00Z",
+    "priority": 0,
+    "payload": {
+      "temperature_c": 18.5
+    }
+  }'
+(venv) Documents/University/UNI2026/Project_TM470/resilient-edge-gateway$ sqlite3 data/gateway.db "
+SELECT
+    message_id,
+    publisher_session_id,
+    source_sequence,
+    delivery_state,
+    payload_hash
+FROM outbox_messages
+WHERE publisher_session_id =
+    'session-duplicate-evidence-001';
+"
+duplicate-evidence-001|session-duplicate-evidence-001|1|pending|ea1c655b8056641a6be79cdcf65d1991050bcfe2b08a7e9ca94c9e6a1d697db3
+(venv) Documents/University/UNI2026/Project_TM470/resilient-edge-gateway$ mosquitto_pub \
+  -h localhost \
+  -p 1883 \
+  -q 1 \
+  -t telemetry/sensor-001 \
+  -m '{
+    "message_id": "duplicate-evidence-001",
+    "device_id": "sensor-001",
+    "publisher_session_id": "session-duplicate-evidence-001",
+    "source_sequence": 1,
+    "source_timestamp": "2026-08-15T12:30:00Z",
+    "priority": 0,
+    "payload": {
+      "temperature_c": 18.5
+    }
+  }'
+(venv) Documents/University/UNI2026/Project_TM470/resilient-edge-gateway$ sqlite3 data/gateway.db "
+SELECT COUNT(*)
+FROM outbox_messages
+WHERE publisher_session_id =
+    'session-duplicate-evidence-001';
+"
+1
+(venv) Documents/University/UNI2026/Project_TM470/resilient-edge-gateway$ sqlite3 data/gateway.db "
+SELECT
+    observed_at,
+    observed_message_id,
+    device_id,
+    publisher_session_id,
+    source_sequence,
+    classification,
+    stored_payload_hash,
+    observed_payload_hash
+FROM gateway_duplicate_observations
+WHERE publisher_session_id =
+    'session-duplicate-evidence-001'
+ORDER BY id;
+"
+2026-08-15T13:01:16.607466Z|duplicate-evidence-001|sensor-001|session-duplicate-evidence-001|1|expected_retransmission|ea1c655b8056641a6be79cdcf65d1991050bcfe2b08a7e9ca94c9e6a1d697db3|ea1c655b8056641a6be79cdcf65d1991050bcfe2b08a7e9ca94c9e6a1d697db3
+(venv) Documents/University/UNI2026/Project_TM470/resilient-edge-gateway$ mosquitto_pub \
+  -h localhost \
+  -p 1883 \
+  -q 1 \
+  -t telemetry/sensor-001 \
+  -m '{
+    "message_id": "duplicate-evidence-001",
+    "device_id": "sensor-001",
+    "publisher_session_id": "session-duplicate-evidence-001",
+    "source_sequence": 1,
+    "source_timestamp": "2026-08-15T12:30:00Z",
+    "priority": 0,
+    "payload": {
+      "temperature_c": 99.9
+    }
+  }'
+(venv) Documents/University/UNI2026/Project_TM470/resilient-edge-gateway$ sqlite3 data/gateway.db "
+SELECT COUNT(*)
+FROM outbox_messages
+WHERE publisher_session_id =
+    'session-duplicate-evidence-001';
+"
+1
+(venv) Documents/University/UNI2026/Project_TM470/resilient-edge-gateway$ sqlite3 data/gateway.db "
+SELECT
+    classification,
+    stored_payload_hash,
+    observed_payload_hash
+FROM gateway_duplicate_observations
+WHERE publisher_session_id =
+    'session-duplicate-evidence-001'
+ORDER BY id;
+"
+expected_retransmission|ea1c655b8056641a6be79cdcf65d1991050bcfe2b08a7e9ca94c9e6a1d697db3|ea1c655b8056641a6be79cdcf65d1991050bcfe2b08a7e9ca94c9e6a1d697db3
+payload_conflict|ea1c655b8056641a6be79cdcf65d1991050bcfe2b08a7e9ca94c9e6a1d697db3|bb380063aa36add5f98fc520a1f4bd9d59d78e1616e6f9b669dcb232b80d8b2c
+(venv) Documents/University/UNI2026/Project_TM470/resilient-edge-gateway$ sqlite3 data/gateway.db "
+SELECT
+    payload,
+    payload_hash
+FROM outbox_messages
+WHERE publisher_session_id =
+    'session-duplicate-evidence-001'
+  AND source_sequence = 1;
+"
+{"temperature_c":18.5}|ea1c655b8056641a6be79cdcf65d1991050bcfe2b08a7e9ca94c9e6a1d697db3
+
+(venv) Documents/University/UNI2026/Project_TM470/resilient-edge-gateway$ python tools/run.py   --run-id duplicate-evidence-001   --collector-only
+{
+  "run_id": "duplicate-evidence-001",
+  "collector_observations": 4,
+  "collector_unique_identities": 1,
+  "collector_duplicate_observations": 3,
+  "collector_conflicting_observations": 0,
+  "collector_conflicting_identities": 0
+}

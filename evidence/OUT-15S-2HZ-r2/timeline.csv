@@ -1,0 +1,5 @@
+timestamp,event,detail
+2026-08-31T10:56:59.402835Z,impairment_applied,100% packet loss on wlan0
+2026-08-31T10:57:16.555178Z,impairment_removed,NetEm cleared from wlan0
+2026-08-31T10:58:18.266241Z,recovery_started,Controlled recovery started
+2026-08-31T10:58:26.520021Z,recovery_complete,Controlled recovery completed

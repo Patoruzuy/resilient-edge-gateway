@@ -1,0 +1,19 @@
+{
+  "run_id": "GATEWAY-BASE-r4",
+  "evaluation_db": "evidence/GATEWAY-BASE-r4/evaluation.db",
+  "generated_unique": 100,
+  "collector_observations": 100,
+  "collector_unique_expected_observed": 100,
+  "collector_duplicate_observations": 0,
+  "collector_conflicting_observations": 0,
+  "collector_conflicting_identities": 0,
+  "missing_gateway": 0,
+  "missing_collector": 0,
+  "unexpected_collector_identities": 0,
+  "delivery_completeness_pct": 100.0,
+  "gateway_db": "evidence/GATEWAY-BASE-r4/gateway.db",
+  "gateway_present": 100,
+  "gateway_broker_acknowledged": 100,
+  "gateway_expected_retransmissions": 0,
+  "gateway_payload_conflicts": 0
+}

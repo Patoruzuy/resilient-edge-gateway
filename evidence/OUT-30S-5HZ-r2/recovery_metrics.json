@@ -1,0 +1,10 @@
+{
+  "generated_at": "2026-08-31T11:29:14.857586Z",
+  "configured_outage_seconds": 30.0,
+  "actual_outage_seconds": 32.267877,
+  "backlog_drain_seconds": 19.604513,
+  "storage_growth_bytes": 3955232,
+  "max_eligible_backlog": 150,
+  "timeline_events": 4,
+  "storage_samples": 3
+}

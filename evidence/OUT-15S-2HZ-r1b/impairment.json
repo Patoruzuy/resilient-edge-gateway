@@ -1,0 +1,20 @@
+{
+  "run_id": "OUT-15S-2HZ-r1b",
+  "scenario": "OUT-15S-2HZ",
+  "repeat_number": 1,
+  "created_at": "2026-08-31T10:30:34.880273Z",
+  "path": "gateway",
+  "interface": "wlan0",
+  "upstream_host": "192.168.1.200",
+  "message_count": 30,
+  "message_rate_hz": 2.0,
+  "delay_ms": 0.0,
+  "loss_pct": 100.0,
+  "configured_outage_seconds": 15.0,
+  "recovery": {
+    "link_stability_seconds": 5.0,
+    "replay_batch_size": 10,
+    "replay_batch_pause_seconds": 0.5,
+    "health_topic": "gateway/health"
+  }
+}

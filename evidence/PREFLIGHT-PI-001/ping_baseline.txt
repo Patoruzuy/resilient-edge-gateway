@@ -1,0 +1,25 @@
+PING 192.168.1.200 (192.168.1.200) 56(84) bytes of data.
+64 bytes from 192.168.1.200: icmp_seq=1 ttl=128 time=3.48 ms
+64 bytes from 192.168.1.200: icmp_seq=2 ttl=128 time=7.50 ms
+64 bytes from 192.168.1.200: icmp_seq=3 ttl=128 time=7.18 ms
+64 bytes from 192.168.1.200: icmp_seq=4 ttl=128 time=7.85 ms
+64 bytes from 192.168.1.200: icmp_seq=5 ttl=128 time=2.55 ms
+64 bytes from 192.168.1.200: icmp_seq=6 ttl=128 time=1.96 ms
+64 bytes from 192.168.1.200: icmp_seq=7 ttl=128 time=7.45 ms
+64 bytes from 192.168.1.200: icmp_seq=8 ttl=128 time=5.32 ms
+64 bytes from 192.168.1.200: icmp_seq=9 ttl=128 time=8.16 ms
+64 bytes from 192.168.1.200: icmp_seq=10 ttl=128 time=6.15 ms
+64 bytes from 192.168.1.200: icmp_seq=11 ttl=128 time=4.45 ms
+64 bytes from 192.168.1.200: icmp_seq=12 ttl=128 time=6.88 ms
+64 bytes from 192.168.1.200: icmp_seq=13 ttl=128 time=5.85 ms
+64 bytes from 192.168.1.200: icmp_seq=14 ttl=128 time=6.77 ms
+64 bytes from 192.168.1.200: icmp_seq=15 ttl=128 time=5.38 ms
+64 bytes from 192.168.1.200: icmp_seq=16 ttl=128 time=8.00 ms
+64 bytes from 192.168.1.200: icmp_seq=17 ttl=128 time=2.40 ms
+64 bytes from 192.168.1.200: icmp_seq=18 ttl=128 time=6.77 ms
+64 bytes from 192.168.1.200: icmp_seq=19 ttl=128 time=5.65 ms
+64 bytes from 192.168.1.200: icmp_seq=20 ttl=128 time=5.82 ms
+
+--- 192.168.1.200 ping statistics ---
+20 packets transmitted, 20 received, 0% packet loss, time 19028ms
+rtt min/avg/max/mdev = 1.958/5.778/8.161/1.867 ms

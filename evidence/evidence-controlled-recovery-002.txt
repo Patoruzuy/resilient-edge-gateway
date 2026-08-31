@@ -1,0 +1,58 @@
+(venv) :Documents/University/UNI2026/Project_TM470/resilient-edge-gateway$ git log --oneline --decorate --graph -n 12
+* afa21ec (HEAD -> main, feat/controlled-recovery) refactor(controlled): Commiting again untracked files
+* b103900 docs(controlled): Documentation and a diagram for the control flow
+* fb6a0ef feat(controlled): add controlled backlog recovery
+* 0f9449c feat(controlled): Configuration and repository additions for the controlled recovery.
+* da4011c (feat/stale-inflight-recovery) refactor(recovery): Typo fixed and centralise schemas paths in helpers.py
+* 962bc13 docs(recovery): Documentation for stale in-flight recovery
+* a18d53d feat(recovery): recover stale in-flight publications
+*   39911fd merge: add persistent duplicate-control evidence
+|\
+| * 169a7c6 (feat/duplicate-control) feat(duplicate-control): Tests passing and produces proper evaluation evidence.
+| * 6860d21 feat(duplicate-control): Bug fixed, it was not counting duplicates when --collector-only mode was used. This lets DUP-03/DUP-04 be tested cleanly.
+| * f895753 feat(duplcate-control): Typo errors fixed and documentation
+| * fe45bac feat(duplicate-control): keep and analyse duplicate evidence
+|/
+
+================================================= test session starts ==================================================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /mnt/c/Users/soyse.TIBURON/OneDrive/Documents/University/UNI2026/Project_TM470/resilient-edge-gateway/venv/bin/python
+cachedir: .pytest_cache
+rootdir: /mnt/c/Users/soyse.TIBURON/OneDrive/Documents/University/UNI2026/Project_TM470/resilient-edge-gateway
+collected 34 items
+
+tests/test_controlled_recovery.py::test_stability_time_is_required_before_recovery PASSED                        [  2%]
+tests/test_controlled_recovery.py::test_health_probe_requires_qos1_acknowledgement PASSED                        [  5%]
+tests/test_controlled_recovery.py::test_recovery_selects_pending_and_retry_wait_in_stream_order PASSED           [  8%]
+tests/test_controlled_recovery.py::test_recovery_batch_is_bounded PASSED                                         [ 11%]
+tests/test_controlled_recovery.py::test_publication_failure_stops_current_batch PASSED                           [ 14%]
+tests/test_controlled_recovery.py::test_recovery_can_resume_after_failure PASSED                                 [ 17%]
+tests/test_controlled_recovery.py::test_limited_priority_slot_does_not_break_device_order PASSED                 [ 20%]
+tests/test_database.py::test_database_initialises_with_wal PASSED                                                [ 23%]
+tests/test_database.py::test_evaluation_database_initialises PASSED                                              [ 26%]
+tests/test_ingestion.py::test_valid_mqtt_publication_is_persisted PASSED                                         [ 29%]
+tests/test_ingestion.py::test_malformed_json_is_rejected PASSED                                                  [ 32%]
+tests/test_ingestion.py::test_identical_publication_is_classified_as_duplicate PASSED                            [ 35%]
+tests/test_outbox_transitions.py::test_pending_message_can_be_marked_in_flight PASSED                            [ 38%]
+tests/test_outbox_transitions.py::test_in_flight_message_can_be_acknowledged PASSED                              [ 41%]
+tests/test_outbox_transitions.py::test_in_flight_message_can_move_to_retry_wait PASSED                           [ 44%]
+tests/test_outbox_transitions.py::test_invalid_transition_is_rejected PASSED                                     [ 47%]
+tests/test_repository.py::test_new_message_is_inserted_as_pending PASSED                                         [ 50%]
+tests/test_repository.py::test_identical_retransmission_is_duplicate PASSED                                      [ 52%]
+tests/test_repository.py::test_same_key_with_different_payload_is_conflict PASSED                                [ 55%]
+tests/test_repository.py::test_committed_message_survives_reopening PASSED                                       [ 58%]
+tests/test_repository.py::test_collector_preserves_repeated_observations PASSED                                  [ 61%]
+tests/test_repository.py::test_collector_identifies_conflicting_observation PASSED                               [ 64%]
+tests/test_stale_inflight_recovery.py::test_stale_in_flight_message_moves_to_retry_wait PASSED                   [ 67%]
+tests/test_stale_inflight_recovery.py::test_recent_in_flight_message_is_not_reset PASSED                         [ 70%]
+tests/test_stale_inflight_recovery.py::test_stale_recovery_does_not_change_other_states PASSED                   [ 73%]
+tests/test_stale_inflight_recovery.py::test_stale_in_flight_recovery_survives_database_reopening PASSED          [ 76%]
+tests/test_upstream.py::test_successful_publish_becomes_broker_acknowledged PASSED                               [ 79%]
+tests/test_upstream.py::test_publish_error_moves_message_to_retry_wait PASSED                                    [ 82%]
+tests/test_upstream.py::test_acknowledgement_timeout_moves_message_to_retry_wait PASSED                          [ 85%]
+tests/test_upstream.py::test_no_pending_message_returns_without_publishing PASSED                                [ 88%]
+tests/test_upstream.py::test_upstream_publication_preserves_message_identity PASSED                              [ 91%]
+tests/test_validation.py::test_valid_message_is_normalised PASSED                                                [ 94%]
+tests/test_validation.py::test_missing_field_is_rejected PASSED                                                  [ 97%]
+tests/test_validation.py::test_equivalent_payloads_have_same_hash PASSED                                         [100%]
+
+================================================== 34 passed in 2.76s ==================================================

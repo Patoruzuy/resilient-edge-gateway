@@ -1,0 +1,53 @@
+(venv) Documents/University/UNI2026/Project_TM470/resilient-edge-gateway$ git log --oneline --decorate --graph -n 12
+*   39911fd (HEAD -> main) merge: add persistent duplicate-control evidence
+|\
+| * 169a7c6 (feat/duplicate-control) feat(duplicate-control): Tests passing and produces proper evaluation evidence.
+| * 6860d21 feat(duplicate-control): Bug fixed, it was not counting duplicates when --collector-only mode was used. This lets DUP-03/DUP-04 be tested cleanly.
+| * f895753 feat(duplcate-control): Typo errors fixed and documentation
+| * fe45bac feat(duplicate-control): keep and analyse duplicate evidence
+|/
+*   3ac55dc merge: add upstream evaluation collector
+|\
+| * 6e84d94 (feat/evaluation-collector) feat(evaluation): Docs type error fixed
+| * 9f48250 feat(evaluation): Docs updates and adds upstream collector
+| * 8eaf0a6 refactor(tests): centralise telemetry test helpers
+| * ef0cacc feat(evaluation): add independent upstream collector
+| * 6027130 fix(upstream): preserve telemetry identity in forwarded envelope
+|/
+* fff1623 (feat/upstream-publication) feat(upstream): Documentation update and typo fixed
+
+(venv) Documents/University/UNI2026/Project_TM470/resilient-edge-gateway$ python -m pytest -v
+================================================= test session starts ==================================================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /mnt/c/**/Documents/University/UNI2026/Project_TM470/resilient-edge-gateway/venv/bin/python
+cachedir: .pytest_cache
+rootdir: /mnt/c/**/Documents/University/UNI2026/Project_TM470/resilient-edge-gateway
+collected 23 items
+
+tests/test_database.py::test_database_initialises_with_wal PASSED                                                [  4%]
+tests/test_database.py::test_evaluation_database_initialises PASSED                                              [  8%]
+tests/test_ingestion.py::test_valid_mqtt_publication_is_persisted PASSED                                         [ 13%]
+tests/test_ingestion.py::test_malformed_json_is_rejected PASSED                                                  [ 17%]
+tests/test_ingestion.py::test_identical_publication_is_classified_as_duplicate PASSED                            [ 21%]
+tests/test_outbox_transitions.py::test_pending_message_can_be_marked_in_flight PASSED                            [ 26%]
+tests/test_outbox_transitions.py::test_in_flight_message_can_be_acknowledged PASSED                              [ 30%]
+tests/test_outbox_transitions.py::test_in_flight_message_can_move_to_retry_wait PASSED                           [ 34%]
+tests/test_outbox_transitions.py::test_invalid_transition_is_rejected PASSED                                     [ 39%]
+tests/test_repository.py::test_new_message_is_inserted_as_pending PASSED                                         [ 43%]
+tests/test_repository.py::test_identical_retransmission_is_duplicate PASSED                                      [ 47%]
+tests/test_repository.py::test_same_key_with_different_payload_is_conflict PASSED                                [ 52%]
+tests/test_repository.py::test_committed_message_survives_reopening PASSED                                       [ 56%]
+tests/test_repository.py::test_collector_preserves_repeated_observations PASSED                                  [ 60%]
+tests/test_repository.py::test_collector_identifies_conflicting_observation PASSED                               [ 65%]
+tests/test_upstream.py::test_successful_publish_becomes_broker_acknowledged PASSED                               [ 69%]
+tests/test_upstream.py::test_publish_error_moves_message_to_retry_wait PASSED                                    [ 73%]
+tests/test_upstream.py::test_acknowledgement_timeout_moves_message_to_retry_wait PASSED                          [ 78%]
+tests/test_upstream.py::test_no_pending_message_returns_without_publishing PASSED                                [ 82%]
+tests/test_upstream.py::test_upstream_publication_preserves_message_identity PASSED                              [ 86%]
+tests/test_validation.py::test_valid_message_is_normalised PASSED                                                [ 91%]
+tests/test_validation.py::test_missing_field_is_rejected PASSED                                                  [ 95%]
+tests/test_validation.py::test_equivalent_payloads_have_same_hash PASSED                                         [100%]
+
+================================================== 23 passed in 2.20s ==================================================
+
+(venv) Documents/University/UNI2026/Project_TM470/resilient-edge-gateway$ date
+Sun Aug 16 11:06:26 BST 2026

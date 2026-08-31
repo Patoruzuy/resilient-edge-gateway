@@ -1,0 +1,2 @@
+device_id,publisher_session_id,source_sequence,message_id,publisher_payload_hash,gateway_present,gateway_state,gateway_attempt_count,collector_observation_count,collector_valid_match,collector_valid_duplicate_count,collector_duplicate_count,collector_conflict_count,payload_conflict
+sensor-collector,collector-session-001,1,collector-duplicate-001,48be20bc1132bd29940a768436bf537804eab83b5c0421d2e765ad200749e5d6,,,,4,1,3,3,0,0

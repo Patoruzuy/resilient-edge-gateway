@@ -1,0 +1,23 @@
+{
+  "run_id": "duplicate-evidence-001",
+  "mode": "collector_only",
+  "gateway_db": "data/gateway.db",
+  "evaluation_db": "data/evaluation.db",
+  "evidence_dir": "evidence",
+  "generated_unique": null,
+  "gateway_present": null,
+  "gateway_broker_acknowledged": null,
+  "gateway_expected_retransmissions": null,
+  "gateway_payload_conflicts": null,
+  "collector_observations": 4,
+  "collector_unique_identities": 1,
+  "collector_unique_expected_observed": null,
+  "collector_duplicate_observations": 3,
+  "collector_conflicting_observations": 0,
+  "collector_conflicting_identities": 0,
+  "missing_gateway": null,
+  "missing_collector": null,
+  "payload_conflicts": 0,
+  "unexpected_collector_identities": null,
+  "delivery_completeness_pct": null
+}

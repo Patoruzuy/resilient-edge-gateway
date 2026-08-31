@@ -1,0 +1,4 @@
+timestamp,sample_point,pending,in_flight,retry_wait,broker_acknowledged,attempt_count_total,database_bytes,wal_bytes,total_bytes
+2026-08-31T11:30:22.506845Z,before_publish,0,0,0,0,0,24576,0,24576
+2026-08-31T11:32:36.651418Z,after_publish,150,0,0,0,0,24576,2607992,2632568
+2026-08-31T11:33:04.600449Z,after_recovery,0,0,0,150,150,24576,3955232,3979808
