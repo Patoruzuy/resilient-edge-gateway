@@ -1,45 +1,20 @@
 # Objective traceability matrix
 
 Created: 20/07/2026  
-Last updated: 14/08/2026
+Last updated: 31/08/2026
 
-This matrix links the TMA03 development and evaluation objectives to the current implementation and evidence.
+This matrix links the final development and evaluation objectives to the implementation and evidence.
 
-| Objective | Current implementation or evidence | Status |
-|---|---|---|
-| DO1 | Telemetry contract, validation, UTC timestamp normalisation and local MQTT ingestion are implemented and tested. | Implemented |
-| DO2 | SQLite WAL outbox, local persistence, durable delivery states and baseline upstream QoS 1 publication are implemented and tested. | Implemented |
-| DO3 | Link-stability detection, QoS 1 health checking, stale-attempt recovery and bounded controlled backlog replay are implemented. Source order is preserved within each device and publisher session, with limited priority handling. | REC-01 to REC-05; CR-01 to CR-08; 34-test automated suite; controlled-recovery smoke test | Implemented |
-| DO4 | Composite idempotency key, uniqueness constraints and canonical payload-hash comparison classify expected duplicates and conflicting content. | Implemented |
-| EO1 | Run-specific publisher and collector evidence can now be reconciled. Baseline run `baseline-050-001` observed 50/50 expected messages with 100.0% delivery completeness. Formal controlled-recovery trials remain outstanding. | In progress |
-| EO2 | Gateway and collector duplicate evidence are implemented; formal duplicate behaviour during impairment and recovery remains to be measured. | DUP-01 to DUP-04; CR-05, CR-06 and CR-08; later impairment runs | In progress |
-| EO3 | Controlled backlog recovery is implemented, but backlog drain time has not yet been measured under controlled impairment. | CR-04 and CR-08 provide implementation evidence; formal impairment runs pending | Exploratory only |
-| EO4 | SQLite persistence is operational, but formal storage behaviour measurements during longer outages have not yet been collected. | Not started |
-| EO5 | Linux `tc` and NetEm have been checked during exploratory work. Formal impairment-based evaluation has not yet begun. | Exploratory only |
+| Objective | Final evidence | Status |
+| --------- | -------------- | -------- |
+| **DO1** | Telemetry validation, normalised UTC , and local MQTT ingestion have been implemented and tested. | Complete |
+| **DO2** | SQLite WAL outbox along with `pending`, `in_flight`, `retry_wait`, and `broker_acknowledged` states have been implemented and tested. | Complete |
+| **DO3** | Link-stability checking, QoS 1 health probes, stale `in_flight` recovery, limited recovery, the source ordering, and limited priority have been implemented and tested. | Complete |
+| **DO4** | A stable identity, uniqueness constraints, and payload hashing help differentiate expected retransmissions from conflicting content. | Complete |
+| **EO1** | Over 15 runs, 1,440 generated messages resulted in 1,440 independent collector observations with no missing messages. | Complete |
+| **EO2** | The final dataset showed no duplicate or conflicting collector observations. Duplicate and conflict classification was also confirmed through targeted tests. | Complete |
+| **EO3** | The average backlog times to drain was 8.279 seconds for the 30 message outage backlog, 19.496 seconds for the 150 message outage backlog, and 29.755 seconds for the 100 message degraded condition. | Complete |
+| **EO4** | Storage samples were collected for 30, 100, and 150 messages backlogs. The majority of observed growth happened in the SQLite WAL. | Complete |
+| **EO5** | NetEm was utilised on the Raspberry Pi `wlan0` upstream connection, and the final impairment scenarios were replicated three times. | Complete |
 
-## Status definitions
-
-- **Not started:** the planned feature or formal evaluation has not begun.
-- **In progress:** part of the implementation or measurement method exists, but the required evaluation is incomplete.
-- **Exploratory only:** the method or tooling has been checked, but it has not yet been used for formal evaluation.
-- **Implemented:** the feature is present and its focused tests pass.
-- **Evaluated:** formal experimental evidence has been collected and analysed.
-- **Complete:** implementation, evaluation and final evidence are complete where required.
-
-## Current position
-
-### Development objectives
-
-DO1, DO2 and DO4 are implemented. The local-first edge gateway can validate telemetry, commit accepted messages to the SQLite WAL outbox, control duplicate insertion and publish selected records to the upstream broker.
-
-DO3 remains the main outstanding development objective. The next recovery work must introduce link-stability checks and bounded backlog replay rather than simply draining the stored backlog after connectivity returns.
-
-### Evaluation objectives
-
-EO1 now has a working measurement method. During baseline run `baseline-050-001`, 50 unique messages were generated, all 50 were present in the gateway, all 50 reached `broker_acknowledged`, and all 50 were independently observed by the evaluation collector. No missing messages, duplicate observations or payload conflicts were recorded. Baseline delivery completeness was therefore 100.0%.
-
-This baseline is not treated as evidence of resilience under intermittent connectivity. EO1 remains in progress until the same measurement approach is applied during controlled recovery and impairment-based evaluation.
-
-EO2 is implemented. Duplicate control works and can be measured. It does not yet tell you how many duplicates controlled recovery creates under intermittent connectivity.
-
-EO3 and EO4 depend on the controlled recovery and outage scenarios that have not yet been run. EO5 remains exploratory because NetEm has been validated as a tool, but the formal repeated impairment scenarios are still outstanding.
+---

@@ -2,6 +2,9 @@
 
 This register records the main tests used to support the TMA03 objectives. Detailed debugging history is kept in the implementation progress log.
 
+I have follow the same structure for each test, including purpose, expected and actual results, evidence, and the objectives that the test supports. The register is intended to be a concise summary of the evaluation evidence.
+
+---
 
 ## Database, validation and ingestion
 
@@ -17,6 +20,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO2
 
+---
 
 ### DB-02: Persistence after reopening
 
@@ -30,6 +34,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO2
 
+---
 
 ### VAL-01: Valid telemetry message
 
@@ -41,6 +46,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO1
 
+---
 
 ### VAL-02: Malformed telemetry rejection
 
@@ -52,6 +58,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO1
 
+---
 
 ### ING-01: Valid local MQTT ingestion
 
@@ -63,10 +70,11 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO1, DO2
 
+---
 
 ### ING-02: Invalid local MQTT ingestion
 
-**Purpose:** Confirm that malformed telemetry received through MQTT does not enter the durable outbox.
+**Purpose:** Confirm that malformed telemetry received through MQTT does not enter the outbox.
 
 **Expected:** the publication is rejected and the ingestion process continues.
 
@@ -74,6 +82,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO1
 
+---
 
 ## Outbox and duplicate control
 
@@ -87,6 +96,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO2
 
+---
 
 ### OUTBOX-02: Identical retransmission
 
@@ -100,6 +110,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO4
 
+---
 
 ### OUTBOX-03: Conflicting message content
 
@@ -113,6 +124,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO4
 
+---
 
 ### DUP-01: Expected retransmission evidence
 
@@ -126,6 +138,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO4
 
+---
 
 ### DUP-02: Data-integrity anomaly evidence
 
@@ -139,6 +152,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO4
 
+---
 
 ### DUP-03: Collector repeated observation count
 
@@ -152,6 +166,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** EO2 foundation
 
+---
 
 ### DUP-04: Collector conflicting observation
 
@@ -165,14 +180,15 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** EO2 foundation
 
+---
 
 ## Upstream publication
 
 ### UP-01: Successful upstream QoS 1 publication
 
-**Purpose:** Confirm the normal durable state transition when the upstream broker acknowledges a publication.
+**Purpose:** Confirm the normal state transition when the upstream broker acknowledges a publication.
 
-**Expected:** `pending → in_flight → broker_acknowledged`, attempt count increases and `acknowledged_at` is populated.
+**Expected:** `pending  -> in_flight  -> broker_acknowledged`, attempt count increases and `acknowledged_at` is populated.
 
 **Actual:** Passed.
 
@@ -180,6 +196,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO2, foundation for EO1
 
+---
 
 ### UP-02: Immediate upstream publication failure
 
@@ -193,6 +210,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO2, prerequisite for DO3
 
+---
 
 ### UP-03: Upstream acknowledgement timeout
 
@@ -206,6 +224,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO2, prerequisite for DO3, foundation for EO2
 
+---
 
 ### UP-04: Empty pending outbox
 
@@ -217,6 +236,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO2
 
+---
 
 ### UP-05: Real upstream Mosquitto publication
 
@@ -232,9 +252,9 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO2, prerequisite for DO3, foundation for EO1
 
+---
 
 ## Evaluation collector
-
 
 ### EVAL-DB-01: Evaluation database initialisation
 
@@ -246,6 +266,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** foundation for EO1 and EO2
 
+---
 
 ### COL-01: Valid collector observation persistence
 
@@ -257,6 +278,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** EO1 foundation
 
+---
 
 ### COL-02: Repeated collector observations are preserved
 
@@ -270,6 +292,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** EO2 foundation
 
+---
 
 ### COL-LIVE-01: Real upstream collector subscription
 
@@ -281,6 +304,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** EO1 foundation
 
+---
 
 ## End-to-end evidence
 
@@ -300,12 +324,14 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** EO1 and EO2 foundation
 
+---
 
 ### E2E-02: Known-set baseline reconciliation
 
 **Purpose:** Confirm that a known set of unique messages can be reconciled across publisher, gateway and collector evidence.
 
 **Configuration:**
+
 - Run: `baseline-050-001`
 - Generated messages: 50
 - Local broker: `localhost:1883`
@@ -320,6 +346,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 **Actual:** Passed.
 
 **Results:**
+
 - Generated unique messages: 50
 - Gateway present: 50
 - Gateway `broker_acknowledged`: 50
@@ -333,6 +360,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 - Delivery completeness: 100.0%
 
 **Evidence:**
+
 - `evidence/baseline-050-001/publisher_output.csv`
 - `evidence/baseline-050-001/reconciliation.csv`
 - `evidence/baseline-050-001/summary.json`
@@ -340,10 +368,11 @@ This register records the main tests used to support the TMA03 objectives. Detai
 - `evaluation.db`
 - Mosquitto, gateway and collector logs
 
-**Conclusion:** The baseline measurement path works under normal, unimpaired conditions. The result validates the method used to calculate delivery completeness but does not demonstrate resilience under intermittent connectivity. Formal controlled-recovery and impairment-based evaluation remain outstanding.
+**Conclusion:** The baseline measurement path works under normal, unimpaired conditions. The result validates the method used to calculate delivery completeness but does not demonstrate resilience under intermittent connectivity. controlled-recovery and impairment-based evaluation remain outstanding.
 
 **Objectives:** EO1 measurement foundation, EO2 measurement foundation
 
+---
 
 ## Stale `in_flight` recovery
 
@@ -359,6 +388,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO3
 
+---
 
 ### REC-02: Recent attempt protection
 
@@ -372,6 +402,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO3
 
+---
 
 ### REC-03: Other delivery states remain unchanged
 
@@ -385,12 +416,13 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO3
 
+---
 
 ### REC-04: Recovery after database reopening
 
 **Purpose:** Confirm that local persistence allows an interrupted publication attempt to be recovered after the gateway database is closed and reopened.
 
-**Expected:** the durable `in_flight` state survives reopening and, once considered stale, moves to `retry_wait` without increasing `attempt_count`.
+**Expected:** the `in_flight` state survives reopening and, once considered stale, moves to `retry_wait` without increasing `attempt_count`.
 
 **Actual:** Passed.
 
@@ -398,12 +430,14 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO2, DO3
 
+---
 
 ### REC-05: Manual stale-recovery smoke test
 
 **Purpose:** Confirm the stale recovery path using the real gateway database and upstream publication tool.
 
 **Configuration:**
+
 - Message: `stale-smoke-001`
 - Upstream broker: `localhost:1884`
 - Stale timeout: configured gateway value
@@ -414,6 +448,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 **Actual:** Passed.
 
 **Observed:**
+
 - `stale-smoke-001` was initially persisted as `pending`.
 - The interrupted publication state was simulated as `in_flight` with `attempt_count = 1`.
 - After the gateway process was stopped, `publish_pending.py` detected one stale `in_flight` record.
@@ -430,6 +465,7 @@ This register records the main tests used to support the TMA03 objectives. Detai
 
 **Objectives:** DO2, DO3
 
+---
 
 ## Controlled recovery
 
@@ -452,6 +488,7 @@ condition is reset after a disconnect or failed publication.
 
 **Objectives:** DO3
 
+---
 
 ### CR-02: QoS 1 health publication
 
@@ -467,6 +504,7 @@ failed or uncertain health publication prevents the batch from starting.
 
 **Objectives:** DO3
 
+---
 
 ### CR-03: Recovery eligibility and stream ordering
 
@@ -483,21 +521,23 @@ excluded.
 
 **Objectives:** DO3
 
+---
 
-### CR-04: Bounded backlog replay
+### CR-04: limited backlog replay
 
 **Purpose:** Confirm that one recovery cycle releases no more than the
 configured batch size.
 
 **Expected:** with more eligible records than the batch limit, only one
-bounded batch is attempted before the next path check.
+limited batch is attempted before the next path check.
 
 **Actual:** Passed.
 
-**Evidence:** `test_recovery_batch_is_bounded`.
+**Evidence:** `test_recovery_batch_is_limited`.
 
 **Objectives:** DO3, foundation for EO3
 
+---
 
 ### CR-05: Failure stops the current batch
 
@@ -513,6 +553,7 @@ records remain unattempted, and the current batch stops.
 
 **Objectives:** DO2, DO3, foundation for EO2
 
+---
 
 ### CR-06: Recovery resumes after another interruption
 
@@ -528,10 +569,11 @@ again after a later stable period.
 
 **Objectives:** DO3, foundation for EO2 and EO3
 
+---
 
 ### CR-07: Limited priority without starvation
 
-**Purpose:** Confirm that priority can influence bounded replay without
+**Purpose:** Confirm that priority can influence limited replay without
 breaking source order or indefinitely blocking older backlog.
 
 **Expected:** most selections continue to favour old eligible records,
@@ -544,6 +586,7 @@ head.
 
 **Objectives:** DO3
 
+---
 
 ### CR-08: Manual controlled-recovery smoke test
 
@@ -563,13 +606,14 @@ Mosquitto broker.
 
 **Expected:** recovery starts only after the upstream connection has
 remained stable and a QoS 1 health publication has been acknowledged.
-Eligible telemetry is then released in bounded batches while source
+Eligible telemetry is then released in limited batches while source
 order is preserved.
 
 **Actual:** Passed.
 
 **Observed:**
-- Twelve messages were persevered for one device and publisher session.
+
+- Twelve messages were kept for one device and publisher session.
 - Source sequences 1 and 2 were placed in `retry_wait` with
   `attempt_count = 1`; sequences 3 to 12 remained `pending`.
 - The upstream connection remained available for approximately 5
@@ -584,8 +628,8 @@ order is preserved.
 - No `pending`, `retry_wait` or `in_flight` record remained for the
   test session.
 
-**Conclusion:** controlled recovery released the durable backlog in
-bounded batches after link stability had been established. Durable
+**Conclusion:** controlled recovery released the backlog in
+limited batches after link stability had been established. Durable
 retry state, source ordering and broker acknowledgement were preserved.
 
 **Evidence:** Mosquitto broker log, `gateway/health` subscriber,
@@ -593,3 +637,161 @@ retry state, source ordering and broker acknowledgement were preserved.
 `gateway.db` queries.
 
 **Objectives:** DO3; foundation for EO2 and EO3
+
+---
+
+## Impairment-based evaluation
+
+### EVAL-01: Direct-publication baseline
+
+**Purpose:** Establish the direct publisher-to-upstream reference.
+
+**Configuration:** 100 messages at 5 messages/s, no impairment, three  runs.
+
+**Actual:** Passed.
+
+All three runs created 100/100 collector observations with no missing, duplicate or conflicting messages.
+
+**runs:**
+
+- `DIRECT-BASE-r1`
+- `DIRECT-BASE-r2`
+- `DIRECT-BASE-r3`
+
+**Evidence:** run-specific publisher output, collector database, reconciliation and summary.
+
+**Objectives:** EO1, EO2
+
+---
+
+### EVAL-02: Gateway baseline
+
+**Purpose:** Confirm final gateway behaviour without configured impairment.
+
+**Configuration:** 100 messages at 5 messages/s, no impairment, three runs.
+
+**Actual:** Passed.
+
+Each run persisted and recovered 100 messages. All expected messages were observed upstream with no missing, duplicate or conflicting messages.
+
+**Problems found:** Earlier baseline attempts exposed an omitted recovery stage, an incorrect upstream broker address and one unsuitable frozen gateway database.
+
+**Corrective action:** The procedure was corrected, the upstream route was checked before testing and a replacement  run was completed.
+
+**runs:**
+
+- `GATEWAY-BASE-r1d`
+- `GATEWAY-BASE-r4`
+- `GATEWAY-BASE-r3`
+
+**Objectives:** EO1, EO2
+
+---
+
+### EVAL-03: Degraded network condition
+
+**Purpose:** Evaluate controlled recovery while the upstream path remains degraded.
+
+**Configuration:** 100 messages at 5 messages/s, 100 ms delay and 10% configured packet loss.
+
+**Actual:** Passed.
+
+All three runs achieved 100/100 delivery completeness.
+
+Mean backlog drain time was **29.755 s**.
+
+No duplicate or conflicting collector observations were recorded.
+
+**Problems found:** The first degraded run had incomplete secondary instrumentation.
+
+**Corrective action:** It was retained as troubleshooting evidence but excluded from the comparable statistics.
+
+**runs:**
+
+- `DEG-100MS-10LOSS-r2`
+- `DEG-100MS-10LOSS-r3`
+- `DEG-100MS-10LOSS-r4`
+
+**Objectives:** EO1, EO2, EO3, EO4, EO5
+
+---
+
+### EVAL-04: 15-second outage and recovery
+
+**Purpose:** Evaluate local persistence and recovery after a short complete upstream outage.
+
+**Configuration:** 30 messages at 2 messages/s, 15-second configured outage.
+
+**Actual:** Passed.
+
+All three runs retained and recovered all 30 messages.
+
+Mean measured outage duration was **17.031 s**.
+
+Mean backlog drain time was **8.279 s**.
+
+No missing, duplicate or conflicting collector observations were recorded.
+
+**Problems found:** Earlier tests had imprecise outage timing and one incompatible frozen gateway database.
+
+**Corrective action:** The essential sequence was simplified to include impairment, publication, and the removal of impairment.
+
+**runs:**
+
+- `OUT-15S-2HZ-r4`
+- `OUT-15S-2HZ-r2`
+- `OUT-15S-2HZ-r3`
+
+**Objectives:** EO1, EO2, EO3, EO4, EO5
+
+---
+
+### EVAL-05: 30-second outage and larger backlog
+
+**Purpose:** Evaluate controlled recovery and storage behaviour with a larger backlog.
+
+**Configuration:** 150 messages at 5 messages/s, 30-second configured outage.
+
+**Actual:** Passed.
+
+All three runs retained and recovered all 150 messages.
+
+Mean measured outage duration was **32.260 s**.
+
+Mean backlog drain time was **19.496 s**.
+
+No missing, duplicate or conflicting collector observations were recorded.
+
+**runs:**
+
+- `OUT-30S-5HZ-r1`
+- `OUT-30S-5HZ-r2`
+- `OUT-30S-5HZ-r3`
+
+**Objectives:** EO1, EO2, EO3, EO4, EO5
+
+---
+
+### EVAL-06: Repeated-run and evidence validity
+
+**Purpose:** Confirm that the final conclusions are based on repeated and reproducible evidence.
+
+**Actual:** Passed.
+
+Five scenarios were represented by three runs each, giving 15 runs.
+
+Earlier preflight, failed and anomalous runs were retained rather than deleted. Runs with incomplete instrumentation or unsuitable frozen database provenance were excluded from the statistics and replaced where required.
+
+The final frozen dataset contained:
+
+- 1,440 generated messages;
+- 1,440 independent collector observations;
+- 0 missing collector messages;
+- 0 duplicate collector observations;
+- 0 conflicting collector observations.
+
+**Evidence:** `evidence/`, frozen databases, run summaries and cross-run statistics.
+
+**Objectives:** EO1 to EO5
+
+---

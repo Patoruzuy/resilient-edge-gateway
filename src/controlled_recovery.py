@@ -48,7 +48,7 @@ class RecoveryPublicationResult:
 
 @dataclass(frozen=True, slots=True)
 class RecoveryBatchResult:
-    """Result of one bounded recovery batch."""
+    """Result of one limited recovery batch."""
     attempted: int
     acknowledged: int
     stopped_on_failure: bool
@@ -183,11 +183,11 @@ def publish_recovery_batch(
     acknowledgement_timeout_seconds: float = 5.0,
 ) -> RecoveryBatchResult:
     """
-    A single limited batch should be released at any given time.
-    Four selections prioritize the oldest eligible stream head.
-    Every fifth selection is designated as a limited priority slot.
-    This approach allows for some prioritization without permitting newer
-    high-priority traffic to entirely obstruct the processing of
+    A single limited batch should be released at a time.
+    The four selections focus on the oldest eligible stream head.
+    Every fifth selection is set aside as a limited priority slot.
+    This method allows for some prioritisation without permitting newer
+    high-priority traffic to completely blocking the processing of
     older backlog records.
     """
     if batch_size <= 0:

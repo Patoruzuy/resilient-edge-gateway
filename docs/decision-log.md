@@ -1,6 +1,6 @@
 # Design decision log
 
-This log records decisions that affect the design or evaluation of the local-first edge gateway. Routine coding corrections are recorded in the implementation progress log instead.
+This log records decisions that affect the design or evaluation of the local-first edge gateway. Coding corrections are recorded in the implementation progress log.
 
 ## D001: SQLite WAL outbox schema
 
@@ -9,7 +9,7 @@ Status: Accepted
 
 ### Decision
 
-Use one `outbox_messages` table as the durable record for accepted telemetry and delivery state. The durable states are:
+Use one `outbox_messages` table as the record for accepted telemetry and delivery state. The states are:
 
 - `pending`
 - `in_flight`
@@ -92,7 +92,7 @@ Status: Accepted
 
 ### Decision
 
-Use configuration dataclasses for broker settings, QoS, timeouts and database paths rather than spreading these values through the gateway code.
+Use configuration dataclasses for broker settings, QoS, timeouts and database paths.
 
 ### Reason
 
@@ -111,7 +111,7 @@ Status: Accepted
 
 ### Decision
 
-Use Eclipse Paho to subscribe to the local Mosquitto broker at QoS 1. The MQTT callback passes the incoming publication to the existing validation and repository functions rather than implementing validation or SQL itself.
+Use Eclipse Paho to subscribe to the local Mosquitto broker at QoS 1. The MQTT callback passes the incoming publication to the existing validation and repository functions.
 
 ### Reason
 
@@ -121,7 +121,7 @@ Keeping the callback small separates MQTT handling from validation and local per
 
 This implements the local ingestion path described in TMA03:
 
-`publisher → local broker → local-first edge gateway → local persistence`
+`publisher  -> local broker  -> local-first edge gateway  -> local persistence`
 
 ---
 
@@ -136,21 +136,21 @@ Publish one eligible `pending` outbox record at a time to the upstream broker us
 
 Before publication:
 
-`pending → in_flight`
+`pending  -> in_flight`
 
 After confirmed broker acknowledgement:
 
-`in_flight → broker_acknowledged`
+`in_flight  -> broker_acknowledged`
 
 If publication fails or acknowledgement cannot be confirmed:
 
-`in_flight → retry_wait`
+`in_flight  -> retry_wait`
 
 Pending records are selected in a deterministic order using source timestamp and row identifier.
 
 ### Reason
 
-This implements the durable acknowledgement state model without introducing uncontrolled backlog replay. Bounded replay and link-stability checks belong to the later controlled recovery slice.
+This implements the acknowledgement state model without introducing uncontrolled backlog replay. limited replay and link-stability checks belong to the later controlled recovery slice.
 
 An acknowledgement timeout is treated as uncertainty rather than proof that the upstream broker did not receive the message. This keeps the design consistent with at-least-once recovery behaviour and allows any later duplicate to be measured.
 
@@ -240,6 +240,7 @@ the existing outbox design.
 This slice confirms that duplicate control can be measured. It does not
 yet evaluate duplicates produced during controlled recovery.
 
+---
 
 ## D009: Stale `in_flight` recovery
 
@@ -269,12 +270,13 @@ message eligible for controlled recovery.
 ### Limitation
 
 The upstream broker may already have accepted the earlier publication.
-A later retry can therefore create a repeated delivery. This is expected
+A later retry can create a repeated delivery. This is expected
 under at-least-once recovery and is measured through the duplicate
 evidence rather than hidden.
 
+---
 
-## D010: Link-stability gate and bounded recovery
+## D010: Link-stability gate and limited recovery
 
 Date: 19/08/2026  
 Status: Accepted
@@ -285,9 +287,9 @@ Controlled recovery starts only after the upstream MQTT connection has
 remained active for the configured stability period and a QoS 1 health
 publication on `gateway/health` has been acknowledged.
 
-`pending` and `retry_wait` records are then released in bounded batches.
+`pending` and `retry_wait` records are then released in limited batches.
 
-A full stability period is required when recovery starts or after a
+A full stability period is needed when recovery starts or after a
 publication or health check fails. Between successful batches, the
 gateway uses the configured pause and another health publication rather
 than repeating the complete stability delay.
@@ -300,7 +302,7 @@ indefinitely starving older backlog.
 
 A short MQTT reconnection may fail again immediately. The stability gate
 and health acknowledgement give recovery a simple entry condition, while
-bounded batches prevent the complete backlog from being released as one
+limited batches prevent the complete backlog from being released as one
 burst.
 
 Repeating the complete stability delay after every successful batch was
@@ -311,3 +313,93 @@ not used because it would add artificial delay to backlog drain time.
 The selected stability period, batch size, pause and priority policy can
 affect recovery time. They are implementation settings, not claimed to
 be optimal, and will be examined during impairment-based evaluation.
+
+---
+
+## D011: impairment-based evaluation method
+
+Date: 22/08/2026  
+Status: Accepted
+
+### Decision
+
+Use five scenarios with three runs of each:
+
+- direct publication baseline;
+- gateway baseline;
+- 100 ms delay with 10% configured loss;
+- 15-second outage at 2 messages/s;
+- 30-second outage at 5 messages/s.
+
+`evaluation/scenarios.json` is the source for the numerical parameters.
+Each run uses a unique evidence directory and gateway tests start from a clean database state.
+
+NetEm is applied only to the upstream path. Direct runs reconcile the publisher with the evaluation collector, while gateway runs reconcile publisher, gateway and collector evidence.
+
+For outage runs, actual impairment duration is recorded separately from backlog drain time. Backlog drain time is measured from `recovery_started` to `recovery_complete`.
+
+### Reason
+
+This gives EO1 to EO5 a repeatable comparison while keeping the
+evaluation small enough to complete and explain. Clean run isolation and recorded timing reduce the risk of mixing evidence from different tests.
+
+### Limitation
+
+Three repetitions support descriptive comparison rather than strong statistical claims. Storage measurements are sampled application-level indicators, not direct measurements of physical SD-card writes.
+
+The outage tests recover the complete backlog after the publisher finishes. They do not claim to evaluate continuous forwarding while recovery is already draining the backlog.
+
+---
+
+## D012: Physical impairment-evaluation topology
+
+Date: 30/08/2026
+Status: Accepted
+
+### Decision
+
+Use the Raspberry Pi for the local gateway and the Windows PC for the upstream broker.
+
+The final path is:
+
+`publisher -> local broker  -> gateway  -> wlan0  -> Windows upstream broker`
+
+NetEm is applied only to `wlan0`. The local broker remains on `localhost:1883`.
+
+### Reason
+
+Earlier same-host testing did not send upstream traffic through the impaired interface. The physical Pi-to-Windows path ensures that NetEm affects upstream communication without affecting local ingestion.
+
+### Limitation
+
+The evaluation represents controlled LAN impairment rather than a real wide-area network.
+
+---
+
+## D013: Runs frozen evaluation evidence
+
+Date: 31/08/2026
+Status: Accepted
+
+### Decision
+
+Store the live Windows collector database outside synchronised folders while a run is active.
+
+After collector shutdown:
+
+1. copy `evaluation.db` into the run evidence directory;
+2. copy the corresponding gateway database;
+3. reconcile using the frozen copies;
+4. keep failed or anomalous runs unchanged.
+
+### Reason
+
+Live SQLite collection was less reliable inside a synchronised directory. A later audit also showed that successful runtime behaviour does not guarantee that the archived database contains the correct run evidence.
+
+Freezing and rechecking each run makes the final dataset reproducible.
+
+### Limitation
+
+Runs with incomplete or inconsistent frozen evidence remain part of the project record but are excluded from the dataset.
+
+---

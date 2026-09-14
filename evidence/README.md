@@ -4,7 +4,7 @@ This folder contains the evaluation evidence from the Raspberry Pi assessment.
 
 ## Datasets used
 
-The EMA analysis is based on 15 formal runs:
+The EMA analysis is based on 15 runs:
 
 - `DIRECT-BASE-r1`
 - `DIRECT-BASE-r2`
