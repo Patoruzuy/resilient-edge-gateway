@@ -24,8 +24,8 @@ Network impairment was only applied to the Raspberry Pi `wlan0` upstream path us
 
 The evaluation used:
 
-| Tool | Purpose ||---|---|
-
+| Tool | Purpose |
+|---|---|
 | `python -m src` | Starts the gateway ingestion process and saves the telemetry. |
 | `tools/run_evaluation.py` | Prepares a single clean evaluation run |
 | `tools/simulated_publisher.py` | Generates a standard message set and creates `publisher_output.csv` |
@@ -39,8 +39,8 @@ The evaluation used:
 
 This scenarios are used for the evaluation:
 
-| ID | Purpose ||----|---|
-
+| ID | Purpose |
+|----|---|
 | DIRECT-BASE | Direct reference from publisher to upstream for EO1. |
 | GATEWAY-BASE | Final reference for the gateway under baseline conditions. |
 | DEG-100MS-10LOSS | Gateway performance with 100 ms delay and 10% packet loss. |
