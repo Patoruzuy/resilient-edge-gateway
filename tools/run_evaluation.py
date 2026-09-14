@@ -1,8 +1,8 @@
 """
-Prepare one formal evaluation run.
+Prepare one evaluation run.
 This is a helper to keep the evaluation setup repeatable without trying to automate
 the complete experiment. It can create fresh databases, initialise the
-evidence directory and print the publisher command for thee scenarios.
+evidence folder and print the publisher command for thee scenarios.
 """
 import argparse
 import json

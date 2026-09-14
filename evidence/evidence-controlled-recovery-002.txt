@@ -23,7 +23,7 @@ collected 34 items
 tests/test_controlled_recovery.py::test_stability_time_is_required_before_recovery PASSED                        [  2%]
 tests/test_controlled_recovery.py::test_health_probe_requires_qos1_acknowledgement PASSED                        [  5%]
 tests/test_controlled_recovery.py::test_recovery_selects_pending_and_retry_wait_in_stream_order PASSED           [  8%]
-tests/test_controlled_recovery.py::test_recovery_batch_is_bounded PASSED                                         [ 11%]
+tests/test_controlled_recovery.py::test_recovery_batch_is_limited PASSED                                         [ 11%]
 tests/test_controlled_recovery.py::test_publication_failure_stops_current_batch PASSED                           [ 14%]
 tests/test_controlled_recovery.py::test_recovery_can_resume_after_failure PASSED                                 [ 17%]
 tests/test_controlled_recovery.py::test_limited_priority_slot_does_not_break_device_order PASSED                 [ 20%]

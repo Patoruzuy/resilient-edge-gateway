@@ -392,7 +392,7 @@ def mark_in_flight(
     """
     Mark a pending message as being published upstream
     The attempt count and timestamp are commited before calling the MQTT client.
-    If the process stoips afterwards, the durable in_flight row provides
+    If the process stoips afterwards, the in_flight row provides
     evidence of the interrupted attempt.
     """
     now = utc_now()

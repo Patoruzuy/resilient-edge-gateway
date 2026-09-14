@@ -131,7 +131,7 @@ def record_event(args: argparse.Namespace) -> None:
 
 
 def storage_counts(connection: sqlite3.Connection) -> dict[str, int]:
-    """Read durable outbox counts needed for storage evidence."""
+    """Read outbox counts needed for storage evidence."""
     result = {
         "pending": 0,
         "in_flight": 0,
@@ -153,7 +153,7 @@ def storage_counts(connection: sqlite3.Connection) -> dict[str, int]:
     return result
 
 def sample_storage(args: argparse.Namespace) -> None:
-    """Append one storage and durable-state sample."""
+    """Append one storage and state sample."""
     run_dir = is_run_dir(args.run_dir)
     gateway_config = UpstreamConfig()
     impairment = json.loads((run_dir / "impairment.json").read_text(encoding="utf-8"))

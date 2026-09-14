@@ -3,7 +3,7 @@ Configuration models for the local-first edge gateway.
 
 This module defines the settings required for the ingestion and upstream of the
 gateway. These settings control the local MQTT connection, subscription
-filter, and the paths used for durable SQLite storage.
+filter, and the paths used for SQLite storage.
 
 Port 1883 is suitable when the local and upstream brokers are being
 simulated on the same computer. However, we need to change it to the second host
@@ -18,11 +18,8 @@ LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s %(message)s"
 
 
 def configure_logging(level: int = logging.INFO) -> None:
-    """Set up console logging for command-line entry points."""
-    logging.basicConfig(
-        level=level,
-        format=LOG_FORMAT,
-    )
+    """Set up the logging for command-line."""
+    logging.basicConfig(level=level, format=LOG_FORMAT)
 
 
 @dataclass(frozen=True, slots=True)

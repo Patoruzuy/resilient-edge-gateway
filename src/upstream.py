@@ -3,9 +3,8 @@ Upstream publication for the local-first edge gateway.
 
 The module selects a single pending outbox record, changes it to
 in_flight, publishes it to the upstream broker at QoS 1 and stores the
-resulting durable state.
+resulting state.
 """
-import json
 import logging
 import sqlite3
 import threading
@@ -36,7 +35,7 @@ class PublicationOutcome(str, Enum):
 
 @dataclass(frozen=True, slots=True)
 class PublicationResult:
-    """Result of attempting to publish one durable outbox record."""
+    """Result of attempting to publish one outbox record."""
     outcome: PublicationOutcome
     row_id: int | None = None
     message_id: str | None = None

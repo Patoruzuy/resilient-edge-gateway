@@ -2,7 +2,7 @@
   "notes": [
     "TMA03 needs specific outage durations, different message rates, larger samples and multiple runs, but does not specify exact numbers.",
     "The 100 ms delay and 10% loss scenario uses the exploratory impairment setting from TMA03.",
-    "Each condition is tested three times.",
+    "Each scenario is tested three times.",
     "Outage tests use controlled recovery after publishing. These tests do not claim concurrent live forwarding during the recovery process."
   ],
   "scenarios": [

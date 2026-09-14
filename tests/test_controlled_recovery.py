@@ -173,7 +173,7 @@ def test_recovery_selects_pending_and_retry_wait_in_stream_order(tmp_path):
         connection.close()
 
 
-def test_recovery_batch_is_bounded(tmp_path):
+def test_recovery_batch_is_limited(tmp_path):
     database_path = tmp_path / "gateway.db"
     connection = open_database(database_path, SCHEMA_PATH)
 

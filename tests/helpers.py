@@ -1,3 +1,7 @@
+"""
+Centralised schemas, valid payload and messages for the resilient-edge-gateway project.
+This was created to avoid errors in payload and message definitions across all test modules.
+"""
 from pathlib import Path
 import json
 

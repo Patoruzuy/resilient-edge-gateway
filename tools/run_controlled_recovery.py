@@ -1,8 +1,8 @@
 """
-Run controlled recovery of the durable MQTT backlog.
+Run controlled recovery of the MQTT backlog.
 
 The tool waits for a stable upstream connection, checks the path using
-a QoS 1 health publication, then drains eligible records in bounded
+a QoS 1 health publication, then drains eligible records in limited
 batches. If connectivity fails, the stability check starts again before
 another batch is attempted.
 """
@@ -26,7 +26,7 @@ log = logging.getLogger(__name__)
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run controlled recovery of the durable MQTT backlog."
+        description="Run controlled recovery of the MQTT backlog."
     )
     return parser.parse_args()
 
@@ -87,10 +87,10 @@ def main() -> None:
                 )
                 time.sleep(1.0)
                 continue
-            # Once the stability time and initial health probe pass,
-            # recovery stay active across limited batches. A failed
-            # publication or health probe returns execution to the outer
-            # loop, where a new stability time is required.
+            # Once the stability time and initial health check pass,
+            # recovery stay active for a limited number of batches. If a
+            # publication or health check fails, the process returns to the outer
+            # loop, where is needed a new stability time.
             while True:
                 result = publish_recovery_batch(
                     connection,
@@ -122,8 +122,8 @@ def main() -> None:
                     )
                     time.sleep(1.0)
                     break
-                # A pause prevents the backlog from being released
-                # as one uncontrolled burst.
+                # A pause prevents the backlog from being released all at once
+                # in an uncontrolled way.
                 time.sleep(config.replay_batch_pause_seconds)
                 # Between successful batches, use the lighter health
                 # check rather than repeating the full stability delay.

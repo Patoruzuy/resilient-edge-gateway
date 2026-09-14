@@ -82,7 +82,7 @@ def process_mqtt_publication(
             topic=topic,
         )
     except sqlite3.Error as e:
-        # Database faults must also not stop the MQTT loop.
+        # Database failures must not stop the MQTT loop.
         log.exception(
             "SQLite error while storing telemetry: topic=%s message_id=%s",
             topic,

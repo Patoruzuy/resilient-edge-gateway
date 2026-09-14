@@ -29,8 +29,4 @@ class TelemetryMessage:
 
     @property
     def idempotency_key(self) -> tuple[str, str, int]:
-        return(
-            self.device_id,
-            self.publisher_session_id,
-            self.source_sequence,
-        )
+        return(self.device_id, self.publisher_session_id, self.source_sequence)
